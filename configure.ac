@@ -12,6 +12,7 @@ AM_INIT_AUTOMAKE([-Wall -Werror foreign subdir-objects])
 AC_PROG_CC
 
 # Checks for libraries.
+PKG_CHECK_MODULES([PKGGTK], [gtk+-3.0])
 
 # Checks for header files.
 

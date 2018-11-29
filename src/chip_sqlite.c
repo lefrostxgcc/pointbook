@@ -9,7 +9,12 @@ sqlite3		*chip_sqlite_open(const char *db_path)
 	db = NULL;
 	rc = sqlite3_open(db_path, &db);
 	if (rc != SQLITE_OK)
-        sqlite3_close(db);
+		chip_sqlite_close(db);
 
 	return db;
+}
+
+int		chip_sqlite_close(sqlite3 *db)
+{
+	return sqlite3_close(db);
 }

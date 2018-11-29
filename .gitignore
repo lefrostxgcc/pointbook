@@ -1,0 +1,9 @@
+autom4te.cache
+build/
+build-aux/
+configure
+configure.scan
+autoscan.log
+*.m4
+*~
+*.in

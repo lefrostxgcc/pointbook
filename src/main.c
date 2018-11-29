@@ -12,6 +12,9 @@ static void setup_tree_view(GtkWidget *tree_view);
 static void on_button_add_clicked(GtkWidget *button, gpointer data);
 static void on_button_update_clicked(GtkWidget *button, gpointer data);
 static void on_button_delete_clicked(GtkWidget *button, gpointer data);
+static int show_subject_callback(void *NotUsed, int argc, char **argv,
+	char **azColName);
+static void	load_subject(void);
 
 static	GtkListStore *store_subject;
 
@@ -128,6 +131,54 @@ static void setup_tree_view(GtkWidget *tree_view)
 
 	selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(tree_view));
 	gtk_tree_selection_set_mode(selection, GTK_SELECTION_BROWSE);
+}
+
+static void	load_subject(void)
+{
+	sqlite3			*db;
+	char			*err_msg;
+	char			*sql;
+	sqlite3_stmt	*res;
+	int				rc;
+	int				index;
+
+	rc = sqlite3_open(DATA_PATH "/" DATABASE_NAME, &db);
+	if (rc != SQLITE_OK)
+	{
+		g_warning("Cannot open database: %s\n", sqlite3_errmsg(db));
+		sqlite3_close(db);
+		return;
+	}
+
+	gtk_list_store_clear(store_subject);
+
+	sql = "SELECT id, subject FROM subject;";
+	rc = sqlite3_exec(db, sql, show_subject_callback, 0, &err_msg);
+	if (rc != SQLITE_OK )
+	{
+		g_warning("Cannot open database: %s\n", sqlite3_errmsg(db));
+		sqlite3_free(err_msg);
+		sqlite3_close(db);
+        return;
+	}    
+    sqlite3_close(db);
+}
+
+static int show_subject_callback(void *NotUsed, int argc, char **argv,
+	char **azColName)
+{
+	GtkTreeModel	*model;
+	GtkTreeIter		iter;
+
+    (void) NotUsed;
+
+	gtk_list_store_append(store_subject, &iter);
+	gtk_list_store_set(store_subject, &iter,
+		0, argv[0],
+		1, argv[1],
+		-1);
+
+    return 0;
 }
 
 static void on_button_add_clicked(GtkWidget *button, gpointer data)

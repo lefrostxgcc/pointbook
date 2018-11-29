@@ -155,14 +155,32 @@ static void on_button_add_clicked(GtkWidget *button, gpointer data)
 	if (rc != SQLITE_OK)
 	{
 		g_warning("Failed to fetch data: %s", sqlite3_errmsg(db));
+		sqlite3_finalize(res);
 		sqlite3_close(db);
 		return;
 	}
 	rc = sqlite3_step(res);
 	if (rc == SQLITE_ROW)
 	    index = sqlite3_column_int(res, 0);
-
+	index++;
 	sqlite3_finalize(res);
+
+	sql = "INSERT INTO subject (id, subject) VALUES (?, ?);";
+	rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
+	if (rc == SQLITE_OK)
+	{
+		sqlite3_bind_int(res, 1, index);
+		sqlite3_bind_text(res, 2, gtk_entry_get_text(GTK_ENTRY(data)), -1, NULL);
+	}
+	else
+	{
+		g_warning("Failed to execute statement: %s", sqlite3_errmsg(db));
+		sqlite3_finalize(res);
+		sqlite3_close(db);
+		return;
+	}
+	sqlite3_step(res);
+    sqlite3_finalize(res);
     sqlite3_close(db);
 
 	g_message("%d", index);

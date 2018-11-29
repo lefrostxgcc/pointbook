@@ -123,7 +123,6 @@ static void setup_tree_view(GtkWidget *tree_view)
 	for (int i = 0; i < 2; i++)
 	{
 		render = gtk_cell_renderer_text_new();
-		g_object_set(render, "editable", TRUE, NULL);
 		column = gtk_tree_view_column_new_with_attributes(headers[i],
 			render, "text", i, NULL);
 		gtk_tree_view_column_set_resizable(column, TRUE);

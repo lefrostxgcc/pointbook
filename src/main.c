@@ -47,19 +47,8 @@ int main(int argc, char *argv[])
 
     gtk_widget_show_all(window);
 
-	sqlite3 *db;
-
-	if ((db = chip_sqlite_open(DATA_PATH "/" DATABASE_NAME)) != NULL)
-		g_message("OK open");
-	else
-		g_message("FAIL open");
-
-	if (chip_sqlite_close(db) == SQLITE_OK)
-		g_message("OK close");
-	else
-		g_message("FAIL close");
-
     gtk_main();
+
 	g_object_unref(store_subject);
 }
 
@@ -236,8 +225,6 @@ static void on_button_add_clicked(GtkWidget *button, gpointer data)
     sqlite3_close(db);
 
 	load_subject();
-
-	g_message("%d", index);
 }
 
 static void on_button_update_clicked(GtkWidget *button, gpointer data)

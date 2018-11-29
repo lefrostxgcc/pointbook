@@ -4,15 +4,35 @@
 #include "chip_sqlite.h"
 
 #define		PROGRAM_TITLE	"Книжка оценок"
+enum {WINDOW_WIDTH = 600, WINDOW_HEIGHT = 400};
+
+static GtkWidget	*create_subject_page(void);
+static GtkWidget	*create_pupil_page(void);
+static void setup_tree_view(GtkWidget *tree_view);
+
+static	GtkListStore *store_subject;
 
 int main(int argc, char *argv[])
 {
-	GtkWidget *window;
+	GtkWidget *window, *notebook, *label_subject, *label_pupil;
 
     gtk_init (&argc, &argv);
 
     window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 	gtk_window_set_title(GTK_WINDOW(window), PROGRAM_TITLE);
+	gtk_container_set_border_width(GTK_CONTAINER(window), 10);
+	gtk_window_set_default_size(GTK_WINDOW(window), WINDOW_WIDTH, WINDOW_HEIGHT);
+
+	label_subject = gtk_label_new ("Список предметов");
+	label_pupil = gtk_label_new ("Список учеников");
+
+	notebook = gtk_notebook_new();
+	gtk_notebook_append_page(GTK_NOTEBOOK(notebook), create_subject_page(),
+		label_subject);
+	gtk_notebook_append_page(GTK_NOTEBOOK(notebook), create_pupil_page(),
+		label_pupil);
+
+	gtk_container_add(GTK_CONTAINER(window), notebook);
 
 	g_signal_connect(G_OBJECT(window), "destroy",
 						G_CALLBACK(gtk_main_quit), NULL);
@@ -32,4 +52,72 @@ int main(int argc, char *argv[])
 		g_message("FAIL close");
 
     gtk_main();
+	g_object_unref(store_subject);
+}
+
+static GtkWidget	*create_subject_page(void)
+{
+	GtkWidget	*hbox;
+	GtkWidget	*vbox;
+	GtkWidget	*tree_view;
+	GtkWidget	*entry_subject;
+	GtkWidget	*button_update;
+	GtkWidget	*button_add;
+	GtkWidget	*button_delete;
+	GtkWidget	*space;
+
+	tree_view = gtk_tree_view_new();
+	entry_subject = gtk_entry_new();
+	button_update = gtk_button_new_with_label("Изменить");
+	button_add = gtk_button_new_with_label("Добавить");
+	button_delete = gtk_button_new_with_label("Удалить");
+	space = gtk_label_new(NULL);
+
+	setup_tree_view(tree_view);
+
+	store_subject = gtk_list_store_new(2, G_TYPE_STRING, G_TYPE_STRING);
+
+	gtk_tree_view_set_model(GTK_TREE_VIEW(tree_view),
+		GTK_TREE_MODEL(store_subject));
+
+	vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
+	hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
+
+	gtk_box_pack_start(GTK_BOX(vbox), entry_subject, FALSE, FALSE, 5);
+	gtk_box_pack_start(GTK_BOX(vbox), button_add, FALSE, FALSE, 5);
+	gtk_box_pack_start(GTK_BOX(vbox), button_update, FALSE, FALSE, 5);
+	gtk_box_pack_start(GTK_BOX(vbox), button_delete, FALSE, FALSE, 5);
+	gtk_box_pack_start(GTK_BOX(vbox), space, TRUE, TRUE, 5);
+	gtk_box_pack_start(GTK_BOX(hbox), tree_view, TRUE, TRUE, 5);
+	gtk_box_pack_start(GTK_BOX(hbox), vbox, FALSE, FALSE, 5);
+
+	return hbox;
+}
+
+static void setup_tree_view(GtkWidget *tree_view)
+{
+	GtkTreeViewColumn	*column;
+	GtkCellRenderer		*render;
+	GtkTreeSelection	*selection;
+
+	char	*headers[] = { "id", "subject" };
+
+	for (int i = 0; i < 2; i++)
+	{
+		render = gtk_cell_renderer_text_new();
+		g_object_set(render, "editable", TRUE, NULL);
+		column = gtk_tree_view_column_new_with_attributes(headers[i],
+			render, "text", i, NULL);
+		gtk_tree_view_column_set_resizable(column, TRUE);
+		gtk_tree_view_column_set_min_width(column, 20);
+		gtk_tree_view_append_column(GTK_TREE_VIEW(tree_view), column);
+	}
+
+	selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(tree_view));
+	gtk_tree_selection_set_mode(selection, GTK_SELECTION_BROWSE);
+}
+
+static GtkWidget	*create_pupil_page(void)
+{
+	return gtk_label_new(NULL);
 }

@@ -236,6 +236,8 @@ static void on_button_add_clicked(GtkWidget *button, gpointer data)
     sqlite3_finalize(res);
     sqlite3_close(db);
 
+	load_subject();
+
 	g_message("%d", index);
 }
 

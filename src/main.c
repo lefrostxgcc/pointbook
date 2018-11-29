@@ -1,6 +1,7 @@
 #include <gtk/gtk.h>
 #include <sqlite3.h>
 #include <config.h>
+#include "chip_sqlite.h"
 
 #define		PROGRAM_TITLE	"Книжка оценок"
 
@@ -18,8 +19,10 @@ int main(int argc, char *argv[])
 
     gtk_widget_show_all(window);
 
-	g_message("%s\n", sqlite3_libversion());
-	g_message("%s\n", DATA_PATH "/" DATABASE_NAME);
+	/*if (chip_sqlite_open(DATA_PATH "/" DATABASE_NAME) != NULL)
+		g_message("OK");
+	else
+		g_message("FAIL");*/
 
     gtk_main();
 }

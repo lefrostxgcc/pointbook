@@ -1,5 +1,5 @@
 bin_PROGRAMS = pointbook
-pointbook_SOURCES = main.c
+pointbook_SOURCES = main.c chip_sqlite.c chip_sqlite.h
 pointbook_CPPFLAGS = @PKGGTK_CFLAGS@ @SQLITE3_CFLAGS@ $(AM_CPPFLAGS) \
 -DDATA_PATH=\"$(pkgdatadir)\"
 pointbook_CFLAGS = $(AM_CFLAGS)

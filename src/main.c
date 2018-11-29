@@ -132,7 +132,40 @@ static void setup_tree_view(GtkWidget *tree_view)
 
 static void on_button_add_clicked(GtkWidget *button, gpointer data)
 {
-	g_message("add");
+	sqlite3			*db;
+	char			*err_msg;
+	char			*sql;
+	sqlite3_stmt	*res;
+	int				rc;
+	int				index;
+
+	if (gtk_entry_get_text_length(GTK_ENTRY(data)) == 0)
+		return;
+
+	rc = sqlite3_open(DATA_PATH "/" DATABASE_NAME, &db);
+	if (rc != SQLITE_OK)
+	{
+		g_warning("Cannot open database: %s\n", sqlite3_errmsg(db));
+		sqlite3_close(db);
+		return;
+	}
+
+	sql = "SELECT MAX(id) FROM subject;";
+	rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
+	if (rc != SQLITE_OK)
+	{
+		g_warning("Failed to fetch data: %s", sqlite3_errmsg(db));
+		sqlite3_close(db);
+		return;
+	}
+	rc = sqlite3_step(res);
+	if (rc == SQLITE_ROW)
+	    index = sqlite3_column_int(res, 0);
+
+	sqlite3_finalize(res);
+    sqlite3_close(db);
+
+	g_message("%d", index);
 }
 
 static void on_button_update_clicked(GtkWidget *button, gpointer data)

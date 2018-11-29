@@ -43,6 +43,8 @@ int main(int argc, char *argv[])
 	g_signal_connect(G_OBJECT(window), "destroy",
 						G_CALLBACK(gtk_main_quit), NULL);
 
+	load_subject();
+
     gtk_widget_show_all(window);
 
 	sqlite3 *db;

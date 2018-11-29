@@ -9,6 +9,9 @@ enum {WINDOW_WIDTH = 600, WINDOW_HEIGHT = 400};
 static GtkWidget	*create_subject_page(void);
 static GtkWidget	*create_pupil_page(void);
 static void setup_tree_view(GtkWidget *tree_view);
+static void on_button_add_clicked(GtkWidget *button, gpointer data);
+static void on_button_update_clicked(GtkWidget *button, gpointer data);
+static void on_button_delete_clicked(GtkWidget *button, gpointer data);
 
 static	GtkListStore *store_subject;
 
@@ -91,6 +94,16 @@ static GtkWidget	*create_subject_page(void)
 	gtk_box_pack_start(GTK_BOX(hbox), tree_view, TRUE, TRUE, 5);
 	gtk_box_pack_start(GTK_BOX(hbox), vbox, FALSE, FALSE, 5);
 
+	g_signal_connect(G_OBJECT(button_add), "clicked",
+						G_CALLBACK(on_button_add_clicked),
+						(gpointer)entry_subject);
+	g_signal_connect(G_OBJECT(button_update), "clicked",
+						G_CALLBACK(on_button_update_clicked),
+						(gpointer)entry_subject);
+	g_signal_connect(G_OBJECT(button_delete), "clicked",
+						G_CALLBACK(on_button_delete_clicked),
+						(gpointer)entry_subject);
+
 	return hbox;
 }
 
@@ -115,6 +128,21 @@ static void setup_tree_view(GtkWidget *tree_view)
 
 	selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(tree_view));
 	gtk_tree_selection_set_mode(selection, GTK_SELECTION_BROWSE);
+}
+
+static void on_button_add_clicked(GtkWidget *button, gpointer data)
+{
+	g_message("add");
+}
+
+static void on_button_update_clicked(GtkWidget *button, gpointer data)
+{
+	g_message("update");
+}
+
+static void on_button_delete_clicked(GtkWidget *button, gpointer data)
+{
+	g_message("delete");
 }
 
 static GtkWidget	*create_pupil_page(void)

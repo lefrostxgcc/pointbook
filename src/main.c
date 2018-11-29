@@ -1,4 +1,5 @@
 #include <gtk/gtk.h>
+#include <sqlite3.h>
 
 #define		PROGRAM_TITLE	"Книжка оценок"
 
@@ -15,6 +16,8 @@ int main(int argc, char *argv[])
 						G_CALLBACK(gtk_main_quit), NULL);
 
     gtk_widget_show_all(window);
+
+	g_message("%s\n", sqlite3_libversion());
 
     gtk_main();
 }

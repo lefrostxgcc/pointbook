@@ -291,7 +291,41 @@ static void on_button_update_clicked(GtkWidget *button, gpointer data)
 
 static void on_button_delete_clicked(GtkWidget *button, gpointer data)
 {
-	g_message("delete");
+	sqlite3			*db;
+	char			*err_msg;
+	char			*sql;
+	sqlite3_stmt	*res;
+	int				rc;
+
+	if (selected_subject_id == 0)
+		return;
+
+	rc = sqlite3_open(DATA_PATH "/" DATABASE_NAME, &db);
+	if (rc != SQLITE_OK)
+	{
+		g_warning("Cannot open database: %s\n", sqlite3_errmsg(db));
+		sqlite3_close(db);
+		return;
+	}
+
+	sql = "DELETE FROM subject WHERE id = ?;";
+	rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
+	if (rc == SQLITE_OK)
+	{
+		sqlite3_bind_int(res, 1, selected_subject_id);
+	}
+	else
+	{
+		g_warning("Failed to execute statement: %s", sqlite3_errmsg(db));
+		sqlite3_finalize(res);
+		sqlite3_close(db);
+		return;
+	}
+	sqlite3_step(res);
+    sqlite3_finalize(res);
+    sqlite3_close(db);
+
+	load_subject();
 }
 
 static GtkWidget	*create_pupil_page(void)

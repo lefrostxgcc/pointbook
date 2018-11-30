@@ -153,7 +153,6 @@ static void	load_subject(void)
 	char			*sql;
 	sqlite3_stmt	*res;
 	int				rc;
-	int				index;
 
 	rc = sqlite3_open(DATA_PATH "/" DATABASE_NAME, &db);
 	if (rc != SQLITE_OK)
@@ -167,7 +166,7 @@ static void	load_subject(void)
 
 	sql = "SELECT id, subject FROM subject;";
 	rc = sqlite3_exec(db, sql, show_subject_callback, 0, &err_msg);
-	if (rc != SQLITE_OK )
+	if (rc != SQLITE_OK)
 	{
 		g_warning("Cannot open database: %s\n", sqlite3_errmsg(db));
 		sqlite3_free(err_msg);
@@ -177,19 +176,14 @@ static void	load_subject(void)
     sqlite3_close(db);
 }
 
-static int show_subject_callback(void *NotUsed, int argc, char **argv,
-	char **azColName)
+static int show_subject_callback(void *opt_arg, int row_count, char **rows,
+	char **col_name)
 {
 	GtkTreeModel	*model;
 	GtkTreeIter		iter;
 
-    (void) NotUsed;
-
 	gtk_list_store_append(store_subject, &iter);
-	gtk_list_store_set(store_subject, &iter,
-		0, argv[0],
-		1, argv[1],
-		-1);
+	gtk_list_store_set(store_subject, &iter, 0, rows[0], 1, rows[1], -1);
 
     return 0;
 }

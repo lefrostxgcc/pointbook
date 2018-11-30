@@ -1,7 +1,6 @@
 #include <gtk/gtk.h>
 #include <sqlite3.h>
 #include <config.h>
-#include "chip_sqlite.h"
 
 #define		PROGRAM_TITLE	"Книжка оценок"
 enum {WINDOW_WIDTH = 600, WINDOW_HEIGHT = 400};

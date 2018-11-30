@@ -60,13 +60,17 @@ static GtkWidget	*create_subject_page(void)
 	GtkWidget	*hbox;
 	GtkWidget	*vbox;
 	GtkWidget	*tree_view;
+	GtkWidget	*label_subject;
 	GtkWidget	*entry_subject;
 	GtkWidget	*button_update;
 	GtkWidget	*button_add;
 	GtkWidget	*button_delete;
 	GtkWidget	*space;
+	GtkWidget	*frame_tree;
+	GtkWidget	*frame_buttons;
 
 	tree_view = gtk_tree_view_new();
+	label_subject = gtk_label_new("Предмет");
 	entry_subject = gtk_entry_new();
 	button_update = gtk_button_new_with_label("Изменить");
 	button_add = gtk_button_new_with_label("Добавить");
@@ -80,16 +84,28 @@ static GtkWidget	*create_subject_page(void)
 	gtk_tree_view_set_model(GTK_TREE_VIEW(tree_view),
 		GTK_TREE_MODEL(store_subject));
 
+	frame_tree = gtk_frame_new(NULL);
+	frame_buttons = gtk_frame_new(NULL);
+
 	vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
 	hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
 
+	gtk_container_set_border_width(GTK_CONTAINER(vbox), 5);
+	gtk_container_set_border_width(GTK_CONTAINER(frame_tree), 5);
+	gtk_container_set_border_width(GTK_CONTAINER(frame_buttons), 5);
+
+	gtk_box_pack_start(GTK_BOX(vbox), label_subject, FALSE, FALSE, 5);
 	gtk_box_pack_start(GTK_BOX(vbox), entry_subject, FALSE, FALSE, 5);
 	gtk_box_pack_start(GTK_BOX(vbox), button_add, FALSE, FALSE, 5);
 	gtk_box_pack_start(GTK_BOX(vbox), button_update, FALSE, FALSE, 5);
 	gtk_box_pack_start(GTK_BOX(vbox), button_delete, FALSE, FALSE, 5);
 	gtk_box_pack_start(GTK_BOX(vbox), space, TRUE, TRUE, 5);
-	gtk_box_pack_start(GTK_BOX(hbox), tree_view, TRUE, TRUE, 5);
-	gtk_box_pack_start(GTK_BOX(hbox), vbox, FALSE, FALSE, 5);
+
+	gtk_container_add(GTK_CONTAINER(frame_tree), tree_view);
+	gtk_container_add(GTK_CONTAINER(frame_buttons), vbox);
+
+	gtk_box_pack_start(GTK_BOX(hbox), frame_tree, TRUE, TRUE, 5);
+	gtk_box_pack_start(GTK_BOX(hbox), frame_buttons, FALSE, FALSE, 5);
 
 	g_signal_connect(G_OBJECT(tree_view), "row-activated",
 						G_CALLBACK(on_treeview_subject_row_activated),

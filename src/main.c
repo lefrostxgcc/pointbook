@@ -191,7 +191,6 @@ static void on_treeview_subject_row_activated(GtkTreeView *tree_view,
 
 	selected_subject_id = (int) g_ascii_strtoll(id, NULL, 10);
 	gtk_entry_set_text(GTK_ENTRY(user_data), subject);
-	g_message("%d", selected_subject_id);
 }
 
 static void on_button_add_clicked(GtkWidget *button, gpointer data)

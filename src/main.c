@@ -17,8 +17,10 @@ static int show_subject_callback(void *NotUsed, int argc, char **argv,
 static void	load_subject(void);
 static void on_treeview_subject_row_activated(GtkTreeView *tree_view,
 	GtkTreePath *path, GtkTreeViewColumn *column, gpointer user_data);
+static int is_selected_subject_row(void);
 
 static	GtkListStore *store_subject;
+static	GtkWidget	*tree_view_subject;
 static int selected_subject_id;
 
 int main(int argc, char *argv[])
@@ -32,8 +34,8 @@ int main(int argc, char *argv[])
 	gtk_container_set_border_width(GTK_CONTAINER(window), 10);
 	gtk_window_set_default_size(GTK_WINDOW(window), WINDOW_WIDTH, WINDOW_HEIGHT);
 
-	label_subject = gtk_label_new ("Список предметов");
-	label_pupil = gtk_label_new ("Список учеников");
+	label_subject = gtk_label_new("Список предметов");
+	label_pupil = gtk_label_new("Список учеников");
 
 	notebook = gtk_notebook_new();
 	gtk_notebook_append_page(GTK_NOTEBOOK(notebook), create_subject_page(),
@@ -59,7 +61,6 @@ static GtkWidget	*create_subject_page(void)
 {
 	GtkWidget	*hbox;
 	GtkWidget	*vbox;
-	GtkWidget	*tree_view;
 	GtkWidget	*label_subject;
 	GtkWidget	*entry_subject;
 	GtkWidget	*button_update;
@@ -69,7 +70,7 @@ static GtkWidget	*create_subject_page(void)
 	GtkWidget	*frame_tree;
 	GtkWidget	*frame_buttons;
 
-	tree_view = gtk_tree_view_new();
+	tree_view_subject = gtk_tree_view_new();
 	label_subject = gtk_label_new("Предмет");
 	entry_subject = gtk_entry_new();
 	button_update = gtk_button_new_with_label("Изменить");
@@ -77,11 +78,11 @@ static GtkWidget	*create_subject_page(void)
 	button_delete = gtk_button_new_with_label("Удалить");
 	space = gtk_label_new(NULL);
 
-	setup_tree_view(tree_view);
+	setup_tree_view(tree_view_subject);
 
 	store_subject = gtk_list_store_new(2, G_TYPE_STRING, G_TYPE_STRING);
 
-	gtk_tree_view_set_model(GTK_TREE_VIEW(tree_view),
+	gtk_tree_view_set_model(GTK_TREE_VIEW(tree_view_subject),
 		GTK_TREE_MODEL(store_subject));
 
 	frame_tree = gtk_frame_new(NULL);
@@ -101,13 +102,13 @@ static GtkWidget	*create_subject_page(void)
 	gtk_box_pack_start(GTK_BOX(vbox), button_delete, FALSE, FALSE, 5);
 	gtk_box_pack_start(GTK_BOX(vbox), space, TRUE, TRUE, 5);
 
-	gtk_container_add(GTK_CONTAINER(frame_tree), tree_view);
+	gtk_container_add(GTK_CONTAINER(frame_tree), tree_view_subject);
 	gtk_container_add(GTK_CONTAINER(frame_buttons), vbox);
 
 	gtk_box_pack_start(GTK_BOX(hbox), frame_tree, TRUE, TRUE, 5);
 	gtk_box_pack_start(GTK_BOX(hbox), frame_buttons, FALSE, FALSE, 5);
 
-	g_signal_connect(G_OBJECT(tree_view), "row-activated",
+	g_signal_connect(G_OBJECT(tree_view_subject), "row-activated",
 						G_CALLBACK(on_treeview_subject_row_activated),
 						(gpointer)entry_subject);
 	g_signal_connect(G_OBJECT(button_add), "clicked",
@@ -141,6 +142,7 @@ static void setup_tree_view(GtkWidget *tree_view)
 		gtk_tree_view_append_column(GTK_TREE_VIEW(tree_view), column);
 	}
 
+	g_object_set(tree_view, "activate-on-single-click", TRUE, NULL);
 	selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(tree_view));
 	gtk_tree_selection_set_mode(selection, GTK_SELECTION_BROWSE);
 }
@@ -276,6 +278,9 @@ static void on_button_update_clicked(GtkWidget *button, gpointer data)
 	if (gtk_entry_get_text_length(GTK_ENTRY(data)) == 0)
 		return;
 
+	if (!is_selected_subject_row())
+		return;
+
 	rc = sqlite3_open(DATA_PATH "/" DATABASE_NAME, &db);
 	if (rc != SQLITE_OK)
 	{
@@ -305,6 +310,14 @@ static void on_button_update_clicked(GtkWidget *button, gpointer data)
 	load_subject();
 }
 
+static int is_selected_subject_row(void)
+{
+	GtkTreeSelection	*selection;
+
+	selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(tree_view_subject));
+	return gtk_tree_selection_get_selected(selection, NULL, NULL);
+}
+
 static void on_button_delete_clicked(GtkWidget *button, gpointer data)
 {
 	sqlite3			*db;
@@ -314,6 +327,9 @@ static void on_button_delete_clicked(GtkWidget *button, gpointer data)
 	int				rc;
 
 	if (selected_subject_id == 0)
+		return;
+
+	if (!is_selected_subject_row())
 		return;
 
 	rc = sqlite3_open(DATA_PATH "/" DATABASE_NAME, &db);

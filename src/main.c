@@ -15,8 +15,11 @@ static void on_button_delete_clicked(GtkWidget *button, gpointer data);
 static int show_subject_callback(void *NotUsed, int argc, char **argv,
 	char **azColName);
 static void	load_subject(void);
+static void on_treeview_subject_row_activated(GtkTreeView *tree_view,
+	GtkTreePath *path, GtkTreeViewColumn *column, gpointer user_data);
 
 static	GtkListStore *store_subject;
+static int selected_subject_id;
 
 int main(int argc, char *argv[])
 {
@@ -88,6 +91,9 @@ static GtkWidget	*create_subject_page(void)
 	gtk_box_pack_start(GTK_BOX(hbox), tree_view, TRUE, TRUE, 5);
 	gtk_box_pack_start(GTK_BOX(hbox), vbox, FALSE, FALSE, 5);
 
+	g_signal_connect(G_OBJECT(tree_view), "row-activated",
+						G_CALLBACK(on_treeview_subject_row_activated),
+						(gpointer)entry_subject);
 	g_signal_connect(G_OBJECT(button_add), "clicked",
 						G_CALLBACK(on_button_add_clicked),
 						(gpointer)entry_subject);
@@ -169,6 +175,21 @@ static int show_subject_callback(void *NotUsed, int argc, char **argv,
 		-1);
 
     return 0;
+}
+
+static void on_treeview_subject_row_activated(GtkTreeView *tree_view,
+	GtkTreePath *path, GtkTreeViewColumn *column, gpointer user_data)
+{
+	GtkTreeIter		iter;
+	GtkTreeModel	*model;
+	const gchar		*id;
+
+	model = gtk_tree_view_get_model(tree_view);
+	if (gtk_tree_model_get_iter(model, &iter, path))
+		gtk_tree_model_get(model, &iter, 0, &id, -1);
+
+	selected_subject_id = (int) g_ascii_strtoll(id, NULL, 10);
+	g_message("%d", selected_subject_id);
 }
 
 static void on_button_add_clicked(GtkWidget *button, gpointer data)

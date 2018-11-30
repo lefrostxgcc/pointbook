@@ -141,6 +141,8 @@ static void setup_tree_view(GtkWidget *tree_view)
 		gtk_tree_view_append_column(GTK_TREE_VIEW(tree_view), column);
 	}
 
+	gtk_tree_view_set_grid_lines(GTK_TREE_VIEW(tree_view),
+		GTK_TREE_VIEW_GRID_LINES_BOTH);
 	g_object_set(tree_view, "activate-on-single-click", TRUE, NULL);
 	selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(tree_view));
 	gtk_tree_selection_set_mode(selection, GTK_SELECTION_BROWSE);

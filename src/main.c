@@ -183,12 +183,14 @@ static void on_treeview_subject_row_activated(GtkTreeView *tree_view,
 	GtkTreeIter		iter;
 	GtkTreeModel	*model;
 	const gchar		*id;
+	const gchar		*subject;
 
 	model = gtk_tree_view_get_model(tree_view);
 	if (gtk_tree_model_get_iter(model, &iter, path))
-		gtk_tree_model_get(model, &iter, 0, &id, -1);
+		gtk_tree_model_get(model, &iter, 0, &id, 1, &subject, -1);
 
 	selected_subject_id = (int) g_ascii_strtoll(id, NULL, 10);
+	gtk_entry_set_text(GTK_ENTRY(user_data), subject);
 	g_message("%d", selected_subject_id);
 }
 

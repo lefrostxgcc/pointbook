@@ -5,38 +5,66 @@
 #define		PROGRAM_TITLE	"Книжка оценок"
 enum {WINDOW_WIDTH = 600, WINDOW_HEIGHT = 400};
 
+static GtkWidget	*create_login_page(void);
 static GtkWidget	*create_subject_page(void);
 static GtkWidget	*create_pupil_page(void);
 static void setup_tree_view(GtkWidget *tree_view);
 static void on_button_add_clicked(GtkWidget *button, gpointer data);
 static void on_button_update_clicked(GtkWidget *button, gpointer data);
 static void on_button_delete_clicked(GtkWidget *button, gpointer data);
-static int show_subject_callback(void *NotUsed, int argc, char **argv,
-	char **azColName);
+static void on_button_pupil_login_clicked(GtkWidget *button, gpointer data);
+static void on_button_teacher_login_clicked(GtkWidget *button, gpointer data);
+static int show_subject_callback(void *opt_arg, int row_count, char **rows,
+	char **col_name);
+static int fill_pupil_callback(void *opt_arg, int row_count, char **rows,
+	char **col_name);
 static void	load_subject(void);
 static void on_treeview_subject_row_activated(GtkTreeView *tree_view,
 	GtkTreePath *path, GtkTreeViewColumn *column, gpointer user_data);
 static int is_selected_subject_row(void);
+static void fill_pupil_store(void);
+static void fill_teacher_login(void);
+static void login_pupil(int id);
+static void login_teacher(void);
+static gboolean check_pupil_login(int id, const gchar *password);
+static gboolean check_teacher_login(int id, const gchar *password);
+static void show_message_box(const char *message);
 
-static	GtkListStore *store_subject;
-static	GtkWidget	*tree_view_subject;
-static int selected_subject_id;
+static GtkWidget	*window;
+static GtkWidget	*combo_box_pupil;
+static GtkWidget	*notebook;
+static GtkWidget	*hbox_subject;
+static GtkListStore	*store_subject;
+static GtkListStore	*store_pupil;
+static GtkWidget	*tree_view_subject;
+static int			selected_subject_id;
+static gchar		*teacher_login;
 
 int main(int argc, char *argv[])
 {
-	GtkWidget *window, *notebook, *label_subject, *label_pupil;
+	GtkWidget *label_login, *label_subject, *label_pupil;
 
-    gtk_init (&argc, &argv);
+    gtk_init(&argc, &argv);
+
+	store_pupil = gtk_list_store_new(2, G_TYPE_STRING, G_TYPE_STRING);
+	store_subject = gtk_list_store_new(2, G_TYPE_STRING, G_TYPE_STRING);
+
+	fill_pupil_store();
+	fill_teacher_login();
+	load_subject();
 
     window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 	gtk_window_set_title(GTK_WINDOW(window), PROGRAM_TITLE);
 	gtk_container_set_border_width(GTK_CONTAINER(window), 10);
 	gtk_window_set_default_size(GTK_WINDOW(window), WINDOW_WIDTH, WINDOW_HEIGHT);
 
+	label_login = gtk_label_new("Вход в книжку оценок");
 	label_subject = gtk_label_new("Список предметов");
 	label_pupil = gtk_label_new("Список учеников");
 
 	notebook = gtk_notebook_new();
+	gtk_notebook_append_page(GTK_NOTEBOOK(notebook), create_login_page(),
+		label_login);
 	gtk_notebook_append_page(GTK_NOTEBOOK(notebook), create_subject_page(),
 		label_subject);
 	gtk_notebook_append_page(GTK_NOTEBOOK(notebook), create_pupil_page(),
@@ -47,18 +75,89 @@ int main(int argc, char *argv[])
 	g_signal_connect(G_OBJECT(window), "destroy",
 						G_CALLBACK(gtk_main_quit), NULL);
 
-	load_subject();
-
     gtk_widget_show_all(window);
+	gtk_widget_hide(hbox_subject);
 
     gtk_main();
 
+	g_free(teacher_login);
 	g_object_unref(store_subject);
+	g_object_unref(store_pupil);
+}
+
+static GtkWidget	*create_login_page(void)
+{
+	GtkWidget		*grid_subject;
+	GtkWidget		*label_space;
+	GtkWidget		*label_pupil;
+	GtkWidget		*label_teacher;
+	GtkWidget		*label_pupil_login;
+	GtkWidget		*entry_teacher_login;
+	GtkWidget		*entry_pupil_password;
+	GtkWidget		*entry_teacher_password;
+	GtkWidget		*button_pupil_login;
+	GtkWidget		*button_teacher_login;
+	GtkCellRenderer	*column;
+
+	label_space = gtk_label_new(NULL);
+	label_pupil = gtk_label_new("Ученик");
+	label_teacher = gtk_label_new("Учитель");
+	label_pupil_login = gtk_label_new("Логин ученика");
+	entry_teacher_login = gtk_entry_new();
+	entry_pupil_password = gtk_entry_new();
+	entry_teacher_password = gtk_entry_new();
+	button_pupil_login = gtk_button_new_with_label("Вход");
+	button_teacher_login = gtk_button_new_with_label("Вход");
+
+	gtk_entry_set_text(GTK_ENTRY(entry_teacher_login), teacher_login);
+	gtk_entry_set_alignment(GTK_ENTRY(entry_teacher_login), 0.5);
+	gtk_widget_set_sensitive(entry_teacher_login, FALSE);
+
+	gtk_entry_set_visibility(GTK_ENTRY(entry_pupil_password), FALSE);
+	gtk_entry_set_visibility(GTK_ENTRY(entry_teacher_password), FALSE);
+
+	combo_box_pupil = gtk_combo_box_new_with_model(GTK_TREE_MODEL(store_pupil));
+
+	column = gtk_cell_renderer_text_new();
+	gtk_cell_layout_pack_start(GTK_CELL_LAYOUT(combo_box_pupil), column, TRUE);
+	gtk_cell_layout_set_attributes(GTK_CELL_LAYOUT(combo_box_pupil), column,
+									"text", 1,
+									NULL);
+
+	gtk_combo_box_set_active(GTK_COMBO_BOX(combo_box_pupil), 0);
+
+	grid_subject = gtk_grid_new();
+	gtk_container_set_border_width(GTK_CONTAINER(grid_subject), 10);
+	gtk_widget_set_halign(grid_subject, GTK_ALIGN_CENTER);
+	gtk_widget_set_valign(grid_subject, GTK_ALIGN_CENTER);
+	gtk_grid_set_row_spacing(GTK_GRID(grid_subject), 10);
+	gtk_grid_set_column_spacing(GTK_GRID(grid_subject), 10);
+	gtk_grid_set_row_homogeneous(GTK_GRID(grid_subject), FALSE);
+	gtk_grid_set_column_homogeneous(GTK_GRID(grid_subject), FALSE);
+
+	gtk_grid_attach(GTK_GRID(grid_subject), label_pupil, 0, 0, 1, 2);
+	gtk_grid_attach(GTK_GRID(grid_subject), combo_box_pupil, 1, 0, 1, 1);
+	gtk_grid_attach(GTK_GRID(grid_subject), entry_pupil_password, 1, 1, 1, 1);
+	gtk_grid_attach(GTK_GRID(grid_subject), button_pupil_login, 2, 0, 1, 2);
+	gtk_grid_attach(GTK_GRID(grid_subject), label_space, 0, 2, 3, 1);
+	gtk_grid_attach(GTK_GRID(grid_subject), label_teacher, 0, 3, 1, 2);
+	gtk_grid_attach(GTK_GRID(grid_subject), entry_teacher_login, 1, 3, 1, 1);
+	gtk_grid_attach(GTK_GRID(grid_subject), entry_teacher_password, 1, 4, 1, 1);
+	gtk_grid_attach(GTK_GRID(grid_subject), button_teacher_login, 2, 3, 1, 2);
+
+	g_signal_connect(G_OBJECT(button_pupil_login), "clicked",
+						G_CALLBACK(on_button_pupil_login_clicked),
+						(gpointer)entry_pupil_password);
+	g_signal_connect(G_OBJECT(button_teacher_login), "clicked",
+						G_CALLBACK(on_button_teacher_login_clicked),
+						(gpointer)entry_teacher_password);
+
+	return grid_subject;
 }
 
 static GtkWidget	*create_subject_page(void)
 {
-	GtkWidget	*hbox;
+	GtkWidget	*frame_subject;
 	GtkWidget	*vbox;
 	GtkWidget	*label_subject;
 	GtkWidget	*entry_subject;
@@ -79,16 +178,15 @@ static GtkWidget	*create_subject_page(void)
 
 	setup_tree_view(tree_view_subject);
 
-	store_subject = gtk_list_store_new(2, G_TYPE_STRING, G_TYPE_STRING);
-
 	gtk_tree_view_set_model(GTK_TREE_VIEW(tree_view_subject),
 		GTK_TREE_MODEL(store_subject));
 
+	frame_subject = gtk_frame_new(NULL);
 	frame_tree = gtk_frame_new(NULL);
 	frame_buttons = gtk_frame_new(NULL);
 
 	vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
-	hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
+	hbox_subject = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
 
 	gtk_container_set_border_width(GTK_CONTAINER(vbox), 5);
 	gtk_container_set_border_width(GTK_CONTAINER(frame_tree), 5);
@@ -104,8 +202,10 @@ static GtkWidget	*create_subject_page(void)
 	gtk_container_add(GTK_CONTAINER(frame_tree), tree_view_subject);
 	gtk_container_add(GTK_CONTAINER(frame_buttons), vbox);
 
-	gtk_box_pack_start(GTK_BOX(hbox), frame_tree, TRUE, TRUE, 5);
-	gtk_box_pack_start(GTK_BOX(hbox), frame_buttons, FALSE, FALSE, 5);
+	gtk_box_pack_start(GTK_BOX(hbox_subject), frame_tree, TRUE, TRUE, 5);
+	gtk_box_pack_start(GTK_BOX(hbox_subject), frame_buttons, FALSE, FALSE, 5);
+
+	gtk_container_add(GTK_CONTAINER(frame_subject), hbox_subject);
 
 	g_signal_connect(G_OBJECT(tree_view_subject), "row-activated",
 						G_CALLBACK(on_treeview_subject_row_activated),
@@ -120,7 +220,7 @@ static GtkWidget	*create_subject_page(void)
 						G_CALLBACK(on_button_delete_clicked),
 						(gpointer)entry_subject);
 
-	return hbox;
+	return frame_subject;
 }
 
 static void setup_tree_view(GtkWidget *tree_view)
@@ -181,11 +281,21 @@ static void	load_subject(void)
 static int show_subject_callback(void *opt_arg, int row_count, char **rows,
 	char **col_name)
 {
-	GtkTreeModel	*model;
 	GtkTreeIter		iter;
 
 	gtk_list_store_append(store_subject, &iter);
 	gtk_list_store_set(store_subject, &iter, 0, rows[0], 1, rows[1], -1);
+
+    return 0;
+}
+
+static int fill_pupil_callback(void *opt_arg, int row_count, char **rows,
+	char **col_name)
+{
+	GtkTreeIter		iter;
+
+	gtk_list_store_append(store_pupil, &iter);
+	gtk_list_store_set(store_pupil, &iter, 0, rows[0], 1, rows[1], -1);
 
     return 0;
 }
@@ -204,6 +314,197 @@ static void on_treeview_subject_row_activated(GtkTreeView *tree_view,
 
 	selected_subject_id = (int) g_ascii_strtoll(id, NULL, 10);
 	gtk_entry_set_text(GTK_ENTRY(user_data), subject);
+}
+
+static void fill_pupil_store(void)
+{
+	sqlite3			*db;
+	char			*err_msg;
+	char			*sql;
+	sqlite3_stmt	*res;
+	int				rc;
+
+	rc = sqlite3_open(DATA_PATH "/" DATABASE_NAME, &db);
+	if (rc != SQLITE_OK)
+	{
+		g_warning("Cannot open database: %s\n", sqlite3_errmsg(db));
+		sqlite3_close(db);
+		return;
+	}
+
+	gtk_list_store_clear(store_pupil);
+	sql = "SELECT id, pupil FROM pupil ORDER BY pupil;";
+	rc = sqlite3_exec(db, sql, fill_pupil_callback, 0, &err_msg);
+	if (rc != SQLITE_OK)
+	{
+		g_warning("Cannot open database: %s\n", sqlite3_errmsg(db));
+		sqlite3_free(err_msg);
+		sqlite3_close(db);
+        return;
+	}    
+    sqlite3_close(db);
+}
+
+static void fill_teacher_login(void)
+{
+	sqlite3			*db;
+	char			*err_msg;
+	char			*sql;
+	sqlite3_stmt	*res;
+	int				rc;
+
+	rc = sqlite3_open(DATA_PATH "/" DATABASE_NAME, &db);
+	if (rc != SQLITE_OK)
+	{
+		g_warning("Cannot open database: %s\n", sqlite3_errmsg(db));
+		sqlite3_close(db);
+		return;
+	}
+
+	sql = "SELECT teacher FROM teacher WHERE id = 1;";
+	rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
+	if (rc != SQLITE_OK)
+	{
+		g_warning("Failed to fetch data: %s", sqlite3_errmsg(db));
+		sqlite3_finalize(res);
+		sqlite3_close(db);
+		return;
+	}
+	rc = sqlite3_step(res);
+	if (rc == SQLITE_ROW)
+	    teacher_login = g_strdup(sqlite3_column_text(res, 0));
+	sqlite3_finalize(res);
+    sqlite3_close(db);
+}
+
+static gboolean check_pupil_login(int id, const gchar *password)
+{
+	sqlite3			*db;
+	char			*err_msg;
+	char			*sql;
+	sqlite3_stmt	*res;
+	int				rc;
+	int				index;
+
+	rc = sqlite3_open(DATA_PATH "/" DATABASE_NAME, &db);
+	if (rc != SQLITE_OK)
+	{
+		g_warning("Cannot open database: %s\n", sqlite3_errmsg(db));
+		sqlite3_close(db);
+		return FALSE;
+	}
+
+	sql = "SELECT COUNT(*) FROM pupil WHERE id = ? AND password = ?;";
+	rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
+	if (rc != SQLITE_OK)
+	{
+		g_warning("Failed to fetch data: %s", sqlite3_errmsg(db));
+		sqlite3_finalize(res);
+		sqlite3_close(db);
+		return FALSE;
+	}
+	else
+	{
+		sqlite3_bind_int(res, 1, id);
+		sqlite3_bind_text(res, 2, password, -1, NULL);
+	}
+	rc = sqlite3_step(res);
+	index = 0;
+	if (rc == SQLITE_ROW)
+	    index = sqlite3_column_int(res, 0);
+	sqlite3_finalize(res);
+    sqlite3_close(db);
+	return index != 0;
+}
+
+static gboolean check_teacher_login(int id, const gchar *password)
+{
+	sqlite3			*db;
+	char			*err_msg;
+	char			*sql;
+	sqlite3_stmt	*res;
+	int				rc;
+	int				match_count;
+
+	rc = sqlite3_open(DATA_PATH "/" DATABASE_NAME, &db);
+	if (rc != SQLITE_OK)
+	{
+		g_warning("Cannot open database: %s\n", sqlite3_errmsg(db));
+		sqlite3_close(db);
+		return FALSE;
+	}
+
+	sql = "SELECT COUNT(*) FROM teacher WHERE id = ? AND password = ?;";
+	rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
+	if (rc != SQLITE_OK)
+	{
+		g_warning("Failed to fetch data: %s", sqlite3_errmsg(db));
+		sqlite3_finalize(res);
+		sqlite3_close(db);
+		return FALSE;
+	}
+	else
+	{
+		sqlite3_bind_int(res, 1, id);
+		sqlite3_bind_text(res, 2, password, -1, NULL);
+	}
+	rc = sqlite3_step(res);
+	match_count = 0;
+	if (rc == SQLITE_ROW)
+	    match_count = sqlite3_column_int(res, 0);
+	sqlite3_finalize(res);
+    sqlite3_close(db);
+	return match_count != 0;
+}
+
+static void on_button_pupil_login_clicked(GtkWidget *button, gpointer data)
+{
+	GtkTreeIter		iter;
+	const gchar		*id_str;
+	int				id;
+
+	if (!gtk_combo_box_get_active_iter(GTK_COMBO_BOX(combo_box_pupil), &iter))
+		return;
+
+	gtk_tree_model_get(GTK_TREE_MODEL(store_pupil), &iter, 0, &id_str, -1);
+	id = (int) g_ascii_strtoll(id_str, NULL, 10);
+	if (check_pupil_login(id, gtk_entry_get_text(GTK_ENTRY(data))))
+		login_pupil(id);
+	else
+		show_message_box("Неверный логин или пароль пользователя");
+}
+
+static void on_button_teacher_login_clicked(GtkWidget *button, gpointer data)
+{
+	if (check_teacher_login(1, gtk_entry_get_text(GTK_ENTRY(data))))
+		login_teacher();
+	else
+		show_message_box("Неверный логин или пароль пользователя");
+}
+
+static void login_pupil(int id)
+{
+	gtk_widget_hide(hbox_subject);
+	gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook), 2);
+}
+
+static void login_teacher(void)
+{
+	gtk_widget_show_all(hbox_subject);
+	gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook), 1);
+}
+
+static void show_message_box(const char *message)
+{
+	GtkWidget *dialog;
+
+	dialog = gtk_message_dialog_new(GTK_WINDOW(window), GTK_DIALOG_MODAL,
+									GTK_MESSAGE_INFO, GTK_BUTTONS_OK,
+									message);
+
+	gtk_window_set_title(GTK_WINDOW(dialog), PROGRAM_TITLE);
+	gtk_dialog_run(GTK_DIALOG(dialog));
+	gtk_widget_destroy(dialog);
 }
 
 static void on_button_add_clicked(GtkWidget *button, gpointer data)

@@ -2,7 +2,9 @@
 #include <sqlite3.h>
 #include <config.h>
 
-#define		PROGRAM_TITLE	"Книжка оценок"
+#define		PROGRAM_TITLE		"Книжка оценок"
+#define		DATABASE_FILENAME	(DATA_PATH "/" DATABASE_NAME)
+
 enum {WINDOW_WIDTH = 600, WINDOW_HEIGHT = 400};
 
 static GtkWidget	*create_login_page(void);

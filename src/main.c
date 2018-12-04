@@ -21,6 +21,8 @@ static int show_subject_callback(void *opt_arg, int row_count, char **rows,
 	char **col_name);
 static int fill_pupil_callback(void *opt_arg, int row_count, char **rows,
 	char **col_name);
+static int fill_teacher_login_callback(void *opt_arg, int col_count, char **cols,
+	char **col_names);
 static void	load_subject(void);
 static void on_treeview_subject_row_activated(GtkTreeView *tree_view,
 	GtkTreePath *path, GtkTreeViewColumn *column, gpointer user_data);
@@ -345,34 +347,33 @@ static void fill_pupil_store(void)
 
 static void fill_teacher_login(void)
 {
-	sqlite3			*db;
-	char			*err_msg;
-	char			*sql;
-	sqlite3_stmt	*res;
-	int				rc;
+	void		*connection;
+	const char	*query;
 
-	rc = sqlite3_open(DATA_PATH "/" DATABASE_NAME, &db);
-	if (rc != SQLITE_OK)
+	if (sql_open(DATABASE_FILENAME, &connection) != SQL_OK)
 	{
-		g_warning("Cannot open database: %s\n", sqlite3_errmsg(db));
-		sqlite3_close(db);
+		show_message_box(sql_error_msg(connection));
+		sql_close(connection);
 		return;
 	}
 
-	sql = "SELECT teacher FROM teacher WHERE id = 1;";
-	rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
-	if (rc != SQLITE_OK)
+	g_free(teacher_login);
+	query = "SELECT teacher FROM teacher WHERE id = 1 LIMIT 1;";
+	if (sql_exec(connection, query, fill_teacher_login_callback, 0)
+		!= SQL_OK)
 	{
-		g_warning("Failed to fetch data: %s", sqlite3_errmsg(db));
-		sqlite3_finalize(res);
-		sqlite3_close(db);
+		show_message_box(sql_error_msg(connection));
 		return;
 	}
-	rc = sqlite3_step(res);
-	if (rc == SQLITE_ROW)
-	    teacher_login = g_strdup(sqlite3_column_text(res, 0));
-	sqlite3_finalize(res);
-    sqlite3_close(db);
+
+	sql_close(connection);
+}
+
+static int fill_teacher_login_callback(void *opt_arg, int col_count, char **cols,
+	char **col_names)
+{
+	teacher_login = g_strdup(cols[0]);
+	return 0;
 }
 
 static gboolean check_pupil_login(int id, const gchar *password)

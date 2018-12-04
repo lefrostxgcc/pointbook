@@ -21,8 +21,10 @@ static int show_subject_callback(void *opt_arg, int row_count, char **rows,
 	char **col_name);
 static int fill_pupil_callback(void *opt_arg, int row_count, char **rows,
 	char **col_name);
-static int fill_teacher_login_callback(void *opt_arg, int col_count, char **cols,
-	char **col_names);
+static int fill_teacher_login_callback(void *opt_arg, int col_count,
+	char **cols, char **col_names);
+static int check_pupil_password_callback(void *opt_arg, int col_count,
+	char **cols, char **col_names);
 static void	load_subject(void);
 static void on_treeview_subject_row_activated(GtkTreeView *tree_view,
 	GtkTreePath *path, GtkTreeViewColumn *column, gpointer user_data);
@@ -44,6 +46,7 @@ static GtkListStore	*store_pupil;
 static GtkWidget	*tree_view_subject;
 static int			selected_subject_id;
 static gchar		*teacher_login;
+static gboolean		is_pupil_password_match;
 
 int main(int argc, char *argv[])
 {
@@ -378,42 +381,34 @@ static int fill_teacher_login_callback(void *opt_arg, int col_count, char **cols
 
 static gboolean check_pupil_login(int id, const gchar *password)
 {
-	sqlite3			*db;
-	char			*err_msg;
-	char			*sql;
-	sqlite3_stmt	*res;
-	int				rc;
-	int				index;
+	void		*connection;
+	char		*query;
 
-	rc = sqlite3_open(DATA_PATH "/" DATABASE_NAME, &db);
-	if (rc != SQLITE_OK)
+	if (sql_open(DATABASE_FILENAME, &connection) != SQL_OK)
 	{
-		g_warning("Cannot open database: %s\n", sqlite3_errmsg(db));
-		sqlite3_close(db);
+		show_message_box(sql_error_msg(connection));
+		sql_close(connection);
 		return FALSE;
 	}
+	is_pupil_password_match = FALSE;
+	query = g_strdup_printf(
+		"SELECT COUNT(*) FROM pupil WHERE id = '%d' AND password = '%s';",
+		id, password);
+	if (sql_exec(connection, query, check_pupil_password_callback, NULL)
+		!= SQL_OK)
+	{
+		show_message_box(sql_error_msg(connection));
+	}
+	g_free(query);
+	sql_close(connection);
+	return is_pupil_password_match;
+}
 
-	sql = "SELECT COUNT(*) FROM pupil WHERE id = ? AND password = ?;";
-	rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
-	if (rc != SQLITE_OK)
-	{
-		g_warning("Failed to fetch data: %s", sqlite3_errmsg(db));
-		sqlite3_finalize(res);
-		sqlite3_close(db);
-		return FALSE;
-	}
-	else
-	{
-		sqlite3_bind_int(res, 1, id);
-		sqlite3_bind_text(res, 2, password, -1, NULL);
-	}
-	rc = sqlite3_step(res);
-	index = 0;
-	if (rc == SQLITE_ROW)
-	    index = sqlite3_column_int(res, 0);
-	sqlite3_finalize(res);
-    sqlite3_close(db);
-	return index != 0;
+static int check_pupil_password_callback(void *opt_arg, int col_count,
+	char **cols, char **col_names)
+{
+	is_pupil_password_match = g_ascii_strtoll(cols[0], NULL, 10) != 0;
+	return 0;
 }
 
 static gboolean check_teacher_login(int id, const gchar *password)

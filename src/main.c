@@ -27,6 +27,8 @@ static int check_pupil_password_callback(void *opt_arg, int col_count,
 	char **cols, char **col_names);
 static int check_teacher_password_callback(void *opt_arg, int col_count,
 	char **cols, char **col_names);
+static int select_max_subject_id_callback(void *opt_arg, int col_count,
+	char **cols, char **col_names);
 static void	load_subject(void);
 static void on_treeview_subject_row_activated(GtkTreeView *tree_view,
 	GtkTreePath *path, GtkTreeViewColumn *column, gpointer user_data);
@@ -47,6 +49,7 @@ static GtkListStore	*store_subject;
 static GtkListStore	*store_pupil;
 static GtkWidget	*tree_view_subject;
 static int			selected_subject_id;
+static int			max_subject_id;
 static gchar		*teacher_login;
 static gboolean		is_pupil_password_match;
 static gboolean		is_teacher_password_match;
@@ -376,6 +379,13 @@ static int fill_teacher_login_callback(void *opt_arg, int col_count, char **cols
 	return 0;
 }
 
+static int select_max_subject_id_callback(void *opt_arg, int col_count,
+	char **cols, char **col_names)
+{
+	max_subject_id = g_ascii_strtoll(cols[0], NULL, 10);
+	return 0;
+}
+
 static gboolean check_pupil_login(int id, const gchar *password)
 {
 	void		*connection;
@@ -492,57 +502,34 @@ static void show_message_box(const char *message)
 
 static void on_button_add_clicked(GtkWidget *button, gpointer data)
 {
-	sqlite3			*db;
-	char			*err_msg;
-	char			*sql;
-	sqlite3_stmt	*res;
-	int				rc;
-	int				index;
+	void		*connection;
+	char		*query;
 
 	if (gtk_entry_get_text_length(GTK_ENTRY(data)) == 0)
 		return;
 
-	rc = sqlite3_open(DATA_PATH "/" DATABASE_NAME, &db);
-	if (rc != SQLITE_OK)
+	if (sql_open(DATABASE_FILENAME, &connection) != SQL_OK)
 	{
-		g_warning("Cannot open database: %s\n", sqlite3_errmsg(db));
-		sqlite3_close(db);
+		show_message_box(sql_error_msg(connection));
+		sql_close(connection);
 		return;
 	}
-
-	sql = "SELECT MAX(id) FROM subject;";
-	rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
-	if (rc != SQLITE_OK)
+	query = "SELECT MAX(id) FROM subject;";
+	if (sql_exec(connection, query, select_max_subject_id_callback, NULL)
+		!= SQL_OK)
 	{
-		g_warning("Failed to fetch data: %s", sqlite3_errmsg(db));
-		sqlite3_finalize(res);
-		sqlite3_close(db);
-		return;
+		show_message_box(sql_error_msg(connection));
 	}
-	rc = sqlite3_step(res);
-	if (rc == SQLITE_ROW)
-	    index = sqlite3_column_int(res, 0);
-	index++;
-	sqlite3_finalize(res);
-
-	sql = "INSERT INTO subject (id, subject) VALUES (?, ?);";
-	rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
-	if (rc == SQLITE_OK)
+	query = g_strdup_printf(
+		"INSERT INTO subject (id, subject) VALUES ('%d', '%s');",
+		max_subject_id + 1, gtk_entry_get_text(GTK_ENTRY(data)));
+	if (sql_exec(connection, query, NULL, NULL)
+		!= SQL_OK)
 	{
-		sqlite3_bind_int(res, 1, index);
-		sqlite3_bind_text(res, 2, gtk_entry_get_text(GTK_ENTRY(data)), -1, NULL);
+		show_message_box(sql_error_msg(connection));
 	}
-	else
-	{
-		g_warning("Failed to execute statement: %s", sqlite3_errmsg(db));
-		sqlite3_finalize(res);
-		sqlite3_close(db);
-		return;
-	}
-	sqlite3_step(res);
-    sqlite3_finalize(res);
-    sqlite3_close(db);
-
+	g_free(query);
+	sql_close(connection);
 	load_subject();
 }
 

@@ -1,7 +1,7 @@
 #include <sqlite3.h>
 #include "sql.h"
 
-int		sql_open(const char *filename, void *connection)
+int		sql_open(const char *filename, void **connection)
 {
 	sqlite3		*db;
 	int			rc;
@@ -12,7 +12,7 @@ int		sql_open(const char *filename, void *connection)
 		sqlite3_close(db);
 		return 1;
 	}
-	connection = db;
+	*connection = db;
 	return 0;
 }
 

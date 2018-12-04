@@ -7,5 +7,6 @@ int		sql_open(const char *filename, void *connection);
 int		sql_close(void *connection);
 int		sql_exec(void *connection, const char *query, sql_callback_t callback,
 	void *callback_opt_arg);
+const char * sql_error_msg(void *connection);
 
 #endif /* SQL_H */

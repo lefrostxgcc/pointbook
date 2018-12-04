@@ -34,3 +34,8 @@ int		sql_exec(void *connection, const char *query, sql_callback_t callback,
 	}    
 	return 0;
 }
+
+const char * sql_error_msg(void *connection)
+{
+	return sqlite3_errmsg(connection);
+}

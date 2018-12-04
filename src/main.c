@@ -1,6 +1,7 @@
 #include <gtk/gtk.h>
 #include <sqlite3.h>
 #include <config.h>
+#include "sql.h"
 
 #define		PROGRAM_TITLE		"Книжка оценок"
 #define		DATABASE_FILENAME	(DATA_PATH "/" DATABASE_NAME)
@@ -320,31 +321,26 @@ static void on_treeview_subject_row_activated(GtkTreeView *tree_view,
 
 static void fill_pupil_store(void)
 {
-	sqlite3			*db;
-	char			*err_msg;
-	char			*sql;
-	sqlite3_stmt	*res;
-	int				rc;
+	void		*connection;
+	const char	*query;
 
-	rc = sqlite3_open(DATA_PATH "/" DATABASE_NAME, &db);
-	if (rc != SQLITE_OK)
+	if (sql_open(DATABASE_FILENAME, &connection) != SQL_OK)
 	{
-		g_warning("Cannot open database: %s\n", sqlite3_errmsg(db));
-		sqlite3_close(db);
+		show_message_box(sql_error_msg(connection));
+		sql_close(connection);
 		return;
 	}
 
 	gtk_list_store_clear(store_pupil);
-	sql = "SELECT id, pupil FROM pupil ORDER BY pupil;";
-	rc = sqlite3_exec(db, sql, fill_pupil_callback, 0, &err_msg);
-	if (rc != SQLITE_OK)
+
+	query = "SELECT id, pupil FROM pupil ORDER BY pupil;";
+	if (sql_exec(connection, query, fill_pupil_callback, 0) != SQL_OK)
 	{
-		g_warning("Cannot open database: %s\n", sqlite3_errmsg(db));
-		sqlite3_free(err_msg);
-		sqlite3_close(db);
-        return;
-	}    
-    sqlite3_close(db);
+		show_message_box(sql_error_msg(connection));
+		return;
+	}
+
+	sql_close(connection);
 }
 
 static void fill_teacher_login(void)

@@ -548,11 +548,8 @@ static void on_button_add_clicked(GtkWidget *button, gpointer data)
 
 static void on_button_update_clicked(GtkWidget *button, gpointer data)
 {
-	sqlite3			*db;
-	char			*err_msg;
-	char			*sql;
-	sqlite3_stmt	*res;
-	int				rc;
+	void		*connection;
+	char		*query;
 
 	if (gtk_entry_get_text_length(GTK_ENTRY(data)) == 0)
 		return;
@@ -560,32 +557,22 @@ static void on_button_update_clicked(GtkWidget *button, gpointer data)
 	if (!is_selected_subject_row())
 		return;
 
-	rc = sqlite3_open(DATA_PATH "/" DATABASE_NAME, &db);
-	if (rc != SQLITE_OK)
+	if (sql_open(DATABASE_FILENAME, &connection) != SQL_OK)
 	{
-		g_warning("Cannot open database: %s\n", sqlite3_errmsg(db));
-		sqlite3_close(db);
+		show_message_box(sql_error_msg(connection));
+		sql_close(connection);
 		return;
 	}
-
-	sql = "UPDATE subject SET subject = ? WHERE id = ?;";
-	rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
-	if (rc == SQLITE_OK)
+	query = g_strdup_printf(
+		"UPDATE subject SET subject = '%s' WHERE id = '%d';",
+		gtk_entry_get_text(GTK_ENTRY(data)), selected_subject_id);
+	if (sql_exec(connection, query, NULL, NULL)
+		!= SQL_OK)
 	{
-		sqlite3_bind_text(res, 1, gtk_entry_get_text(GTK_ENTRY(data)), -1, NULL);
-		sqlite3_bind_int(res, 2, selected_subject_id);
+		show_message_box(sql_error_msg(connection));
 	}
-	else
-	{
-		g_warning("Failed to execute statement: %s", sqlite3_errmsg(db));
-		sqlite3_finalize(res);
-		sqlite3_close(db);
-		return;
-	}
-	sqlite3_step(res);
-    sqlite3_finalize(res);
-    sqlite3_close(db);
-
+	g_free(query);
+	sql_close(connection);
 	load_subject();
 }
 

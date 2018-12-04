@@ -1,4 +1,5 @@
 #include <sqlite3.h>
+#include <stdio.h>
 #include "sql.h"
 
 int		sql_open(const char *filename, void **connection)
@@ -26,7 +27,8 @@ int		sql_exec(void *connection, const char *query, sql_callback_t callback,
 {
 	int		rc;
 
-	rc = sqlite3_exec(connection, query, callback, callback_opt_arg, 0);
+	rc = sqlite3_exec(connection, query, callback, callback_opt_arg,
+						callback_opt_arg);
 	if (rc != SQLITE_OK)
 	{
 		sqlite3_close(connection);

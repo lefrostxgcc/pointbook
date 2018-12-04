@@ -10,6 +10,8 @@ enum {WINDOW_WIDTH = 600, WINDOW_HEIGHT = 400};
 static GtkWidget	*create_login_page(void);
 static GtkWidget	*create_subject_page(void);
 static GtkWidget	*create_pupil_page(void);
+static GtkWidget	*create_pupil_points_page(void);
+static GtkWidget	*create_class_points_page(void);
 static void setup_tree_view(GtkWidget *tree_view);
 static void on_button_add_clicked(GtkWidget *button, gpointer data);
 static void on_button_update_clicked(GtkWidget *button, gpointer data);
@@ -56,6 +58,7 @@ static gboolean		is_teacher_password_match;
 int main(int argc, char *argv[])
 {
 	GtkWidget *label_login, *label_subject, *label_pupil;
+	GtkWidget *label_pupil_points, *label_class_points;
 
     gtk_init(&argc, &argv);
 
@@ -74,6 +77,8 @@ int main(int argc, char *argv[])
 	label_login = gtk_label_new("Вход в книжку оценок");
 	label_subject = gtk_label_new("Список предметов");
 	label_pupil = gtk_label_new("Список учеников");
+	label_pupil_points = gtk_label_new("Оценки ученика");
+	label_class_points = gtk_label_new("Оценки класса");
 
 	notebook = gtk_notebook_new();
 	gtk_notebook_append_page(GTK_NOTEBOOK(notebook), create_login_page(),
@@ -82,6 +87,12 @@ int main(int argc, char *argv[])
 		label_subject);
 	gtk_notebook_append_page(GTK_NOTEBOOK(notebook), create_pupil_page(),
 		label_pupil);
+	gtk_notebook_append_page(GTK_NOTEBOOK(notebook),
+								create_pupil_points_page(),
+								label_pupil_points);
+	gtk_notebook_append_page(GTK_NOTEBOOK(notebook),
+								create_class_points_page(),
+								label_class_points);
 
 	gtk_container_add(GTK_CONTAINER(window), notebook);
 
@@ -237,6 +248,16 @@ static GtkWidget	*create_subject_page(void)
 }
 
 static GtkWidget	*create_pupil_page(void)
+{
+	return gtk_label_new(NULL);
+}
+
+static GtkWidget	*create_pupil_points_page(void)
+{
+	return gtk_label_new(NULL);
+}
+
+static GtkWidget	*create_class_points_page(void)
 {
 	return gtk_label_new(NULL);
 }
@@ -545,7 +566,7 @@ static gboolean check_teacher_login(int id, const gchar *password)
 static void login_pupil(int id)
 {
 	gtk_widget_hide(hbox_subject);
-	gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook), 2);
+	gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook), 3);
 }
 
 static void login_teacher(void)

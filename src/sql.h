@@ -1,6 +1,7 @@
 #ifndef SQL_H
 #define SQL_H
 
+enum { SQL_OK, SQL_FAIL };
 typedef int (*sql_callback_t)(void *, int, char **, char **);
 
 int		sql_open(const char *filename, void **connection);

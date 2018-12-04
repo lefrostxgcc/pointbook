@@ -10,10 +10,10 @@ int		sql_open(const char *filename, void **connection)
 	if (rc != SQLITE_OK)
 	{
 		sqlite3_close(db);
-		return 1;
+		return SQL_FAIL;
 	}
 	*connection = db;
-	return 0;
+	return SQL_OK;
 }
 
 int		sql_close(void *connection)
@@ -30,9 +30,9 @@ int		sql_exec(void *connection, const char *query, sql_callback_t callback,
 	if (rc != SQLITE_OK)
 	{
 		sqlite3_close(connection);
-        return 1;
+        return SQL_FAIL;
 	}    
-	return 0;
+	return SQL_OK;
 }
 
 const char * sql_error_msg(void *connection)

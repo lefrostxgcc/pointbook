@@ -11,6 +11,7 @@ static GtkWidget	*create_login_page(void);
 static GtkWidget	*create_subject_page(void);
 static GtkWidget	*create_pupil_page(void);
 static GtkWidget	*create_pupil_points_page(void);
+static GtkWidget	*create_pupil_points_dummy_page(void);
 static GtkWidget	*create_class_points_page(void);
 static void setup_tree_view(GtkWidget *tree_view);
 static void on_button_add_clicked(GtkWidget *button, gpointer data);
@@ -30,17 +31,27 @@ static int check_teacher_password_callback(void *opt_arg, int col_count,
 	char **cols, char **col_names);
 static int select_max_subject_id_callback(void *opt_arg, int col_count,
 	char **cols, char **col_names);
+static int pupil_points_max_day_callback(void *opt_arg, int col_count,
+	char **cols, char **col_names);
+static int point_subject_callback(void *opt_arg, int col_count,
+	char **cols, char **col_names);
+static int point_pupil_fill_callback(void *opt_arg, int col_count,
+	char **cols, char **col_names);
+static gboolean walk_pupil_points(GtkTreeModel *model, GtkTreePath *path,
+									GtkTreeIter *iter, gpointer data);
 static void	load_subject(void);
 static void on_treeview_subject_row_activated(GtkTreeView *tree_view,
 	GtkTreePath *path, GtkTreeViewColumn *column, gpointer user_data);
 static int is_selected_subject_row(void);
 static void fill_pupil_store(void);
 static void fill_teacher_login(void);
+static void fill_pupil_points_store(int id);
 static void login_pupil(int id);
 static void login_teacher(void);
 static gboolean check_pupil_login(int id, const gchar *password);
 static gboolean check_teacher_login(int id, const gchar *password);
 static void show_message_box(const char *message);
+static int get_pupil_points_max_day(int id);
 
 static GtkWidget	*window;
 static GtkWidget	*combo_box_pupil;
@@ -48,12 +59,17 @@ static GtkWidget	*notebook;
 static GtkWidget	*hbox_subject;
 static GtkListStore	*store_subject;
 static GtkListStore	*store_pupil;
+static GtkListStore *store_pupil_points;
 static GtkWidget	*tree_view_subject;
 static int			selected_subject_id;
 static int			max_subject_id;
+static int			pupil_points_max_day;
 static gchar		*teacher_login;
 static gboolean		is_pupil_password_match;
 static gboolean		is_teacher_password_match;
+static gchar		*curr_point_subject_id;
+static gchar		*curr_point_day;
+static gchar		*curr_pupil_name;
 
 int main(int argc, char *argv[])
 {
@@ -88,7 +104,7 @@ int main(int argc, char *argv[])
 	gtk_notebook_append_page(GTK_NOTEBOOK(notebook), create_pupil_page(),
 		label_pupil);
 	gtk_notebook_append_page(GTK_NOTEBOOK(notebook),
-								create_pupil_points_page(),
+								create_pupil_points_dummy_page(),
 								label_pupil_points);
 	gtk_notebook_append_page(GTK_NOTEBOOK(notebook),
 								create_class_points_page(),
@@ -107,6 +123,7 @@ int main(int argc, char *argv[])
 	g_free(teacher_login);
 	g_object_unref(store_subject);
 	g_object_unref(store_pupil);
+	g_object_unref(store_pupil_points);
 }
 
 static GtkWidget	*create_login_page(void)
@@ -252,9 +269,63 @@ static GtkWidget	*create_pupil_page(void)
 	return gtk_label_new(NULL);
 }
 
-static GtkWidget	*create_pupil_points_page(void)
+static GtkWidget	*create_pupil_points_dummy_page(void)
 {
 	return gtk_label_new(NULL);
+}
+
+static GtkWidget	*create_pupil_points_page(void)
+{
+	GtkWidget			*frame_pupil_points;
+	GtkWidget			*label_pupil_name;
+	GtkWidget			*vbox;
+	GtkWidget			*tree_view_pupil_points;
+	GtkTreeViewColumn	*column;
+	GtkCellRenderer		*render;
+	gchar				*log_str;
+	gchar				**headers;
+	int					column_count;
+	int					i;
+
+	log_str = g_strdup_printf("Список оценок ученика: %s", curr_pupil_name);
+	vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+	label_pupil_name = gtk_label_new(log_str);
+	g_free(log_str);
+	frame_pupil_points = gtk_frame_new(NULL);
+	tree_view_pupil_points = gtk_tree_view_new();
+
+	gtk_tree_view_set_model(GTK_TREE_VIEW(tree_view_pupil_points),
+		GTK_TREE_MODEL(store_pupil_points));
+
+	gtk_tree_view_set_grid_lines(GTK_TREE_VIEW(tree_view_pupil_points),
+		GTK_TREE_VIEW_GRID_LINES_BOTH);
+
+	column_count = pupil_points_max_day + 1;
+	headers = g_slice_alloc(column_count * sizeof(gchar *));
+	headers[0] = "Предмет";
+	for (i = 1; i < column_count; i++)
+		headers[i] = g_strdup_printf("%d", i);
+
+	for (i = 0; i < column_count; i++)
+	{
+		render = gtk_cell_renderer_text_new();
+		column = gtk_tree_view_column_new_with_attributes(headers[i],
+			render, "text", i+1, NULL);
+		gtk_tree_view_column_set_min_width(column, 20);
+		gtk_tree_view_append_column(GTK_TREE_VIEW(tree_view_pupil_points),
+			column);
+	}
+
+	gtk_container_add(GTK_CONTAINER(frame_pupil_points), tree_view_pupil_points);
+	gtk_box_pack_start(GTK_BOX(vbox), label_pupil_name, FALSE, FALSE, 0);
+	gtk_box_pack_start(GTK_BOX(vbox), frame_pupil_points, TRUE, TRUE, 0);
+
+	for (i = 1; i < column_count; i++)
+		g_free(headers[i]);
+
+	g_slice_free1(column_count * sizeof(gchar *), headers);
+
+	return vbox;
 }
 
 static GtkWidget	*create_class_points_page(void)
@@ -320,7 +391,8 @@ static void on_button_pupil_login_clicked(GtkWidget *button, gpointer data)
 	if (!gtk_combo_box_get_active_iter(GTK_COMBO_BOX(combo_box_pupil), &iter))
 		return;
 
-	gtk_tree_model_get(GTK_TREE_MODEL(store_pupil), &iter, 0, &id_str, -1);
+	gtk_tree_model_get(GTK_TREE_MODEL(store_pupil), &iter, 0, &id_str,
+		1, &curr_pupil_name, -1);
 	id = (int) g_ascii_strtoll(id_str, NULL, 10);
 	if (check_pupil_login(id, gtk_entry_get_text(GTK_ENTRY(data))))
 		login_pupil(id);
@@ -513,6 +585,76 @@ static void fill_teacher_login(void)
 	sql_close(connection);
 }
 
+static void fill_pupil_points_store(int id)
+{
+	void		*connection;
+	char		*query;
+	GType		*types;
+	int			i;
+	int			column_count;
+
+	pupil_points_max_day = get_pupil_points_max_day(id);
+	column_count = pupil_points_max_day + 2;
+	types = g_slice_alloc(column_count * sizeof(GType));
+	for (i = 0; i < column_count; i++)
+		types[i] = G_TYPE_STRING;
+	store_pupil_points = gtk_list_store_newv(column_count, types);
+
+	if (sql_open(DATABASE_FILENAME, &connection) != SQL_OK)
+	{
+		show_message_box(sql_error_msg(connection));
+		g_slice_free1(column_count * sizeof(GType), types);
+		sql_close(connection);
+		return;
+	}
+
+	query = g_strdup_printf(
+		"SELECT DISTINCT subject_id, subject FROM point, subject "
+			" WHERE pupil_id = '%d' AND point.subject_id = subject.id;", id);
+	if (sql_exec(connection, query, point_subject_callback, NULL)
+		!= SQL_OK)
+	{
+		show_message_box(sql_error_msg(connection));
+	}
+	g_free(query);
+
+	query = g_strdup_printf(
+		"SELECT subject_id, day, point FROM point WHERE pupil_id = '%d'", id);
+	if (sql_exec(connection, query, point_pupil_fill_callback, NULL)
+		!= SQL_OK)
+	{
+		show_message_box(sql_error_msg(connection));
+	}
+	g_free(query);
+	sql_close(connection);
+
+	g_slice_free1(column_count * sizeof(GType), types);
+}
+
+static int get_pupil_points_max_day(int id)
+{
+	void		*connection;
+	char		*query;
+
+	if (sql_open(DATABASE_FILENAME, &connection) != SQL_OK)
+	{
+		show_message_box(sql_error_msg(connection));
+		sql_close(connection);
+		return -1;
+	}
+
+	query = g_strdup_printf("SELECT MAX(day) FROM point WHERE pupil_id = '%d';",
+							id);
+	if (sql_exec(connection, query, pupil_points_max_day_callback, NULL)
+		!= SQL_OK)
+	{
+		show_message_box(sql_error_msg(connection));
+	}
+	g_free(query);
+	sql_close(connection);
+	return pupil_points_max_day;
+}
+
 static gboolean check_pupil_login(int id, const gchar *password)
 {
 	void		*connection;
@@ -565,7 +707,17 @@ static gboolean check_teacher_login(int id, const gchar *password)
 
 static void login_pupil(int id)
 {
+	GtkWidget	*label_pupil_points;
+
+	fill_pupil_points_store(id);
 	gtk_widget_hide(hbox_subject);
+	label_pupil_points = gtk_label_new("Оценки ученика");
+	gtk_notebook_remove_page(GTK_NOTEBOOK(notebook), 3);
+	gtk_notebook_insert_page(GTK_NOTEBOOK(notebook),
+                          create_pupil_points_page(),
+                          label_pupil_points,
+                          3);
+	gtk_widget_show_all(notebook);
 	gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook), 3);
 }
 
@@ -623,4 +775,51 @@ static int check_teacher_password_callback(void *opt_arg, int col_count,
 {
 	is_teacher_password_match = g_ascii_strtoll(cols[0], NULL, 10) != 0;
 	return 0;
+}
+
+static int pupil_points_max_day_callback(void *opt_arg, int col_count,
+	char **cols, char **col_names)
+{
+	pupil_points_max_day = g_ascii_strtoll(cols[0], NULL, 10);
+	return 0;
+}
+
+static int point_subject_callback(void *opt_arg, int col_count,
+	char **cols, char **col_names)
+{
+	GtkTreeIter		iter;
+
+	gtk_list_store_append(store_pupil_points, &iter);
+	gtk_list_store_set(store_pupil_points, &iter, 0, cols[0],
+		1, cols[1], -1);
+
+	return 0;
+}
+
+static int point_pupil_fill_callback(void *opt_arg, int col_count,
+	char **cols, char **col_names)
+{
+	curr_point_subject_id = cols[0];
+	curr_point_day = cols[1];
+
+	gtk_tree_model_foreach(GTK_TREE_MODEL(store_pupil_points),
+                     		walk_pupil_points, cols[2]);
+
+	return 0;
+}
+
+static gboolean walk_pupil_points(GtkTreeModel *model, GtkTreePath *path,
+									GtkTreeIter *iter, gpointer data)
+{
+	gchar		*subject_id;
+
+	gtk_tree_model_get(GTK_TREE_MODEL(model), iter, 0, &subject_id, -1);
+	if (g_strcmp0(subject_id, curr_point_subject_id) == 0)
+	{
+		gtk_list_store_set(store_pupil_points, iter,
+			g_ascii_strtoll(curr_point_day, NULL, 10) + 1, data, -1);
+		return TRUE;
+	}
+
+	return FALSE;
 }

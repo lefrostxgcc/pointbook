@@ -1,5 +1,4 @@
 #include <gtk/gtk.h>
-#include <sqlite3.h>
 #include <config.h>
 #include "sql.h"
 

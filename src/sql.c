@@ -21,11 +21,12 @@ int		sql_close(void *connection)
 	return sqlite3_close(connection);
 }
 
-int		sql_exec(void *connection, const char *query, sql_callback_t callback)
+int		sql_exec(void *connection, const char *query, sql_callback_t callback,
+	void *callback_opt_arg)
 {
 	int		rc;
 
-	rc = sqlite3_exec(connection, query, callback, 0, 0);
+	rc = sqlite3_exec(connection, query, callback, callback_opt_arg, 0);
 	if (rc != SQLITE_OK)
 	{
 		sqlite3_close(connection);

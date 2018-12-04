@@ -236,6 +236,11 @@ static GtkWidget	*create_subject_page(void)
 	return frame_subject;
 }
 
+static GtkWidget	*create_pupil_page(void)
+{
+	return gtk_label_new(NULL);
+}
+
 static void setup_tree_view(GtkWidget *tree_view)
 {
 	GtkTreeViewColumn	*column;
@@ -261,52 +266,6 @@ static void setup_tree_view(GtkWidget *tree_view)
 	gtk_tree_selection_set_mode(selection, GTK_SELECTION_BROWSE);
 }
 
-static void	load_subject(void)
-{
-	void		*connection;
-	const char	*query;
-
-	if (sql_open(DATABASE_FILENAME, &connection) != SQL_OK)
-	{
-		show_message_box(sql_error_msg(connection));
-		sql_close(connection);
-		return;
-	}
-
-	gtk_list_store_clear(store_subject);
-
-	query = "SELECT id, subject FROM subject;";
-	if (sql_exec(connection, query, show_subject_callback, 0) != SQL_OK)
-	{
-		show_message_box(sql_error_msg(connection));
-		return;
-	}
-
-	sql_close(connection);
-}
-
-static int show_subject_callback(void *opt_arg, int row_count, char **rows,
-	char **col_name)
-{
-	GtkTreeIter		iter;
-
-	gtk_list_store_append(store_subject, &iter);
-	gtk_list_store_set(store_subject, &iter, 0, rows[0], 1, rows[1], -1);
-
-    return 0;
-}
-
-static int fill_pupil_callback(void *opt_arg, int row_count, char **rows,
-	char **col_name)
-{
-	GtkTreeIter		iter;
-
-	gtk_list_store_append(store_pupil, &iter);
-	gtk_list_store_set(store_pupil, &iter, 0, rows[0], 1, rows[1], -1);
-
-    return 0;
-}
-
 static void on_treeview_subject_row_activated(GtkTreeView *tree_view,
 	GtkTreePath *path, GtkTreeViewColumn *column, gpointer user_data)
 {
@@ -323,130 +282,12 @@ static void on_treeview_subject_row_activated(GtkTreeView *tree_view,
 	gtk_entry_set_text(GTK_ENTRY(user_data), subject);
 }
 
-static void fill_pupil_store(void)
+static int is_selected_subject_row(void)
 {
-	void		*connection;
-	const char	*query;
+	GtkTreeSelection	*selection;
 
-	if (sql_open(DATABASE_FILENAME, &connection) != SQL_OK)
-	{
-		show_message_box(sql_error_msg(connection));
-		sql_close(connection);
-		return;
-	}
-
-	gtk_list_store_clear(store_pupil);
-
-	query = "SELECT id, pupil FROM pupil ORDER BY pupil;";
-	if (sql_exec(connection, query, fill_pupil_callback, 0) != SQL_OK)
-	{
-		show_message_box(sql_error_msg(connection));
-		return;
-	}
-
-	sql_close(connection);
-}
-
-static void fill_teacher_login(void)
-{
-	void		*connection;
-	const char	*query;
-
-	if (sql_open(DATABASE_FILENAME, &connection) != SQL_OK)
-	{
-		show_message_box(sql_error_msg(connection));
-		sql_close(connection);
-		return;
-	}
-
-	g_free(teacher_login);
-	query = "SELECT teacher FROM teacher WHERE id = 1 LIMIT 1;";
-	if (sql_exec(connection, query, fill_teacher_login_callback, 0)
-		!= SQL_OK)
-	{
-		show_message_box(sql_error_msg(connection));
-		return;
-	}
-
-	sql_close(connection);
-}
-
-static int fill_teacher_login_callback(void *opt_arg, int col_count, char **cols,
-	char **col_names)
-{
-	teacher_login = g_strdup(cols[0]);
-	return 0;
-}
-
-static int select_max_subject_id_callback(void *opt_arg, int col_count,
-	char **cols, char **col_names)
-{
-	max_subject_id = g_ascii_strtoll(cols[0], NULL, 10);
-	return 0;
-}
-
-static gboolean check_pupil_login(int id, const gchar *password)
-{
-	void		*connection;
-	char		*query;
-
-	if (sql_open(DATABASE_FILENAME, &connection) != SQL_OK)
-	{
-		show_message_box(sql_error_msg(connection));
-		sql_close(connection);
-		return FALSE;
-	}
-	is_pupil_password_match = FALSE;
-	query = g_strdup_printf(
-		"SELECT COUNT(*) FROM pupil WHERE id = '%d' AND password = '%s';",
-		id, password);
-	if (sql_exec(connection, query, check_pupil_password_callback, NULL)
-		!= SQL_OK)
-	{
-		show_message_box(sql_error_msg(connection));
-	}
-	g_free(query);
-	sql_close(connection);
-	return is_pupil_password_match;
-}
-
-static int check_pupil_password_callback(void *opt_arg, int col_count,
-	char **cols, char **col_names)
-{
-	is_pupil_password_match = g_ascii_strtoll(cols[0], NULL, 10) != 0;
-	return 0;
-}
-
-static int check_teacher_password_callback(void *opt_arg, int col_count,
-	char **cols, char **col_names)
-{
-	is_teacher_password_match = g_ascii_strtoll(cols[0], NULL, 10) != 0;
-	return 0;
-}
-
-static gboolean check_teacher_login(int id, const gchar *password)
-{
-	void		*connection;
-	char		*query;
-
-	if (sql_open(DATABASE_FILENAME, &connection) != SQL_OK)
-	{
-		show_message_box(sql_error_msg(connection));
-		sql_close(connection);
-		return FALSE;
-	}
-	is_teacher_password_match = FALSE;
-	query = g_strdup_printf(
-		"SELECT COUNT(*) FROM teacher WHERE id = '%d' AND password = '%s';",
-		id, password);
-	if (sql_exec(connection, query, check_teacher_password_callback, NULL)
-		!= SQL_OK)
-	{
-		show_message_box(sql_error_msg(connection));
-	}
-	g_free(query);
-	sql_close(connection);
-	return is_teacher_password_match;
+	selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(tree_view_subject));
+	return gtk_tree_selection_get_selected(selection, NULL, NULL);
 }
 
 static void on_button_pupil_login_clicked(GtkWidget *button, gpointer data)
@@ -472,31 +313,6 @@ static void on_button_teacher_login_clicked(GtkWidget *button, gpointer data)
 		login_teacher();
 	else
 		show_message_box("Неверный логин или пароль пользователя");
-}
-
-static void login_pupil(int id)
-{
-	gtk_widget_hide(hbox_subject);
-	gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook), 2);
-}
-
-static void login_teacher(void)
-{
-	gtk_widget_show_all(hbox_subject);
-	gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook), 1);
-}
-
-static void show_message_box(const char *message)
-{
-	GtkWidget *dialog;
-
-	dialog = gtk_message_dialog_new(GTK_WINDOW(window), GTK_DIALOG_MODAL,
-									GTK_MESSAGE_INFO, GTK_BUTTONS_OK,
-									message);
-
-	gtk_window_set_title(GTK_WINDOW(dialog), PROGRAM_TITLE);
-	gtk_dialog_run(GTK_DIALOG(dialog));
-	gtk_widget_destroy(dialog);
 }
 
 static void on_button_add_clicked(GtkWidget *button, gpointer data)
@@ -562,14 +378,6 @@ static void on_button_update_clicked(GtkWidget *button, gpointer data)
 	load_subject();
 }
 
-static int is_selected_subject_row(void)
-{
-	GtkTreeSelection	*selection;
-
-	selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(tree_view_subject));
-	return gtk_tree_selection_get_selected(selection, NULL, NULL);
-}
-
 static void on_button_delete_clicked(GtkWidget *button, gpointer data)
 {
 	void		*connection;
@@ -599,7 +407,199 @@ static void on_button_delete_clicked(GtkWidget *button, gpointer data)
 	load_subject();
 }
 
-static GtkWidget	*create_pupil_page(void)
+static void show_message_box(const char *message)
 {
-	return gtk_label_new(NULL);
+	GtkWidget *dialog;
+
+	dialog = gtk_message_dialog_new(GTK_WINDOW(window), GTK_DIALOG_MODAL,
+									GTK_MESSAGE_INFO, GTK_BUTTONS_OK,
+									message);
+
+	gtk_window_set_title(GTK_WINDOW(dialog), PROGRAM_TITLE);
+	gtk_dialog_run(GTK_DIALOG(dialog));
+	gtk_widget_destroy(dialog);
+}
+
+static void	load_subject(void)
+{
+	void		*connection;
+	const char	*query;
+
+	if (sql_open(DATABASE_FILENAME, &connection) != SQL_OK)
+	{
+		show_message_box(sql_error_msg(connection));
+		sql_close(connection);
+		return;
+	}
+
+	gtk_list_store_clear(store_subject);
+
+	query = "SELECT id, subject FROM subject;";
+	if (sql_exec(connection, query, show_subject_callback, 0) != SQL_OK)
+	{
+		show_message_box(sql_error_msg(connection));
+		return;
+	}
+
+	sql_close(connection);
+}
+
+static void fill_pupil_store(void)
+{
+	void		*connection;
+	const char	*query;
+
+	if (sql_open(DATABASE_FILENAME, &connection) != SQL_OK)
+	{
+		show_message_box(sql_error_msg(connection));
+		sql_close(connection);
+		return;
+	}
+
+	gtk_list_store_clear(store_pupil);
+
+	query = "SELECT id, pupil FROM pupil ORDER BY pupil;";
+	if (sql_exec(connection, query, fill_pupil_callback, 0) != SQL_OK)
+	{
+		show_message_box(sql_error_msg(connection));
+		return;
+	}
+
+	sql_close(connection);
+}
+
+static void fill_teacher_login(void)
+{
+	void		*connection;
+	const char	*query;
+
+	if (sql_open(DATABASE_FILENAME, &connection) != SQL_OK)
+	{
+		show_message_box(sql_error_msg(connection));
+		sql_close(connection);
+		return;
+	}
+
+	g_free(teacher_login);
+	query = "SELECT teacher FROM teacher WHERE id = 1 LIMIT 1;";
+	if (sql_exec(connection, query, fill_teacher_login_callback, 0)
+		!= SQL_OK)
+	{
+		show_message_box(sql_error_msg(connection));
+		return;
+	}
+
+	sql_close(connection);
+}
+
+static gboolean check_pupil_login(int id, const gchar *password)
+{
+	void		*connection;
+	char		*query;
+
+	if (sql_open(DATABASE_FILENAME, &connection) != SQL_OK)
+	{
+		show_message_box(sql_error_msg(connection));
+		sql_close(connection);
+		return FALSE;
+	}
+	is_pupil_password_match = FALSE;
+	query = g_strdup_printf(
+		"SELECT COUNT(*) FROM pupil WHERE id = '%d' AND password = '%s';",
+		id, password);
+	if (sql_exec(connection, query, check_pupil_password_callback, NULL)
+		!= SQL_OK)
+	{
+		show_message_box(sql_error_msg(connection));
+	}
+	g_free(query);
+	sql_close(connection);
+	return is_pupil_password_match;
+}
+
+static gboolean check_teacher_login(int id, const gchar *password)
+{
+	void		*connection;
+	char		*query;
+
+	if (sql_open(DATABASE_FILENAME, &connection) != SQL_OK)
+	{
+		show_message_box(sql_error_msg(connection));
+		sql_close(connection);
+		return FALSE;
+	}
+	is_teacher_password_match = FALSE;
+	query = g_strdup_printf(
+		"SELECT COUNT(*) FROM teacher WHERE id = '%d' AND password = '%s';",
+		id, password);
+	if (sql_exec(connection, query, check_teacher_password_callback, NULL)
+		!= SQL_OK)
+	{
+		show_message_box(sql_error_msg(connection));
+	}
+	g_free(query);
+	sql_close(connection);
+	return is_teacher_password_match;
+}
+
+static void login_pupil(int id)
+{
+	gtk_widget_hide(hbox_subject);
+	gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook), 2);
+}
+
+static void login_teacher(void)
+{
+	gtk_widget_show_all(hbox_subject);
+	gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook), 1);
+}
+
+static int show_subject_callback(void *opt_arg, int row_count, char **rows,
+	char **col_name)
+{
+	GtkTreeIter		iter;
+
+	gtk_list_store_append(store_subject, &iter);
+	gtk_list_store_set(store_subject, &iter, 0, rows[0], 1, rows[1], -1);
+
+    return 0;
+}
+
+static int fill_pupil_callback(void *opt_arg, int row_count, char **rows,
+	char **col_name)
+{
+	GtkTreeIter		iter;
+
+	gtk_list_store_append(store_pupil, &iter);
+	gtk_list_store_set(store_pupil, &iter, 0, rows[0], 1, rows[1], -1);
+
+    return 0;
+}
+
+static int fill_teacher_login_callback(void *opt_arg, int col_count,
+	char **cols, char **col_names)
+{
+	teacher_login = g_strdup(cols[0]);
+	return 0;
+}
+
+static int select_max_subject_id_callback(void *opt_arg, int col_count,
+	char **cols, char **col_names)
+{
+	max_subject_id = g_ascii_strtoll(cols[0], NULL, 10);
+	return 0;
+}
+
+static int check_pupil_password_callback(void *opt_arg, int col_count,
+	char **cols, char **col_names)
+{
+	is_pupil_password_match = g_ascii_strtoll(cols[0], NULL, 10) != 0;
+	return 0;
+}
+
+static int check_teacher_password_callback(void *opt_arg, int col_count,
+	char **cols, char **col_names)
+{
+	is_teacher_password_match = g_ascii_strtoll(cols[0], NULL, 10) != 0;
+	return 0;
 }

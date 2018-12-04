@@ -18,7 +18,7 @@ int		sql_open(const char *filename, void *connection)
 
 int		sql_close(void *connection)
 {
-	return 0;
+	return sqlite3_close(connection);
 }
 
 int		sql_exec(const char *query, sql_callback_t callback)

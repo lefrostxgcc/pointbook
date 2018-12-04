@@ -261,32 +261,26 @@ static void setup_tree_view(GtkWidget *tree_view)
 
 static void	load_subject(void)
 {
-	sqlite3			*db;
-	char			*err_msg;
-	char			*sql;
-	sqlite3_stmt	*res;
-	int				rc;
+	void		*connection;
+	const char	*query;
 
-	rc = sqlite3_open(DATA_PATH "/" DATABASE_NAME, &db);
-	if (rc != SQLITE_OK)
+	if (sql_open(DATABASE_FILENAME, &connection) != SQL_OK)
 	{
-		g_warning("Cannot open database: %s\n", sqlite3_errmsg(db));
-		sqlite3_close(db);
+		show_message_box(sql_error_msg(connection));
+		sql_close(connection);
 		return;
 	}
 
 	gtk_list_store_clear(store_subject);
 
-	sql = "SELECT id, subject FROM subject;";
-	rc = sqlite3_exec(db, sql, show_subject_callback, 0, &err_msg);
-	if (rc != SQLITE_OK)
+	query = "SELECT id, subject FROM subject;";
+	if (sql_exec(connection, query, show_subject_callback, 0) != SQL_OK)
 	{
-		g_warning("Cannot open database: %s\n", sqlite3_errmsg(db));
-		sqlite3_free(err_msg);
-		sqlite3_close(db);
-        return;
-	}    
-    sqlite3_close(db);
+		show_message_box(sql_error_msg(connection));
+		return;
+	}
+
+	sql_close(connection);
 }
 
 static int show_subject_callback(void *opt_arg, int row_count, char **rows,

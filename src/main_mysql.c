@@ -258,10 +258,10 @@ static GtkWidget	*create_subject_page(void)
 						(gpointer)entry_subject);
 	g_signal_connect(G_OBJECT(button_update), "clicked",
 						G_CALLBACK(on_button_update_clicked),
-						(gpointer)entry_subject);/*
+						(gpointer)entry_subject);
 	g_signal_connect(G_OBJECT(button_delete), "clicked",
 						G_CALLBACK(on_button_delete_clicked),
-						(gpointer)entry_subject);*/
+						(gpointer)entry_subject);
 
 	return frame_subject;
 }
@@ -516,11 +516,14 @@ static void on_button_update_clicked(GtkWidget *button, gpointer data)
 	mysql_close(con);
 	load_subject();
 }
-/*
+
 static void on_button_delete_clicked(GtkWidget *button, gpointer data)
 {
-	void		*connection;
-	char		*query;
+	MYSQL			*con;
+	char			*query;
+	MYSQL_ROW		row;
+	GtkTreeIter		iter;
+	int				num_fields;
 
 	if (selected_subject_id == 0)
 		return;
@@ -528,23 +531,35 @@ static void on_button_delete_clicked(GtkWidget *button, gpointer data)
 	if (!is_selected_subject_row())
 		return;
 
-	if (sql_open(DATABASE_FILENAME, &connection) != SQL_OK)
+	con = mysql_init(NULL);
+
+	if (con == NULL)
 	{
-		show_message_box(sql_error_msg(connection));
-		sql_close(connection);
+		show_message_box("mysql_init failed()");
 		return;
 	}
+
+	if (!mysql_real_connect(con, DB_ADDR, DB_USER, DB_PASS, DB_NAME, 0, NULL, 0))
+	{
+		show_message_box(mysql_error(con));
+		mysql_close(con);
+		return;
+	}
+
 	query = g_strdup_printf(
 		"DELETE FROM subject WHERE id = %d;", selected_subject_id);
-	if (sql_exec(connection, query, NULL, NULL)
-		!= SQL_OK)
+
+	if (mysql_query(con, query))
 	{
-		show_message_box(sql_error_msg(connection));
+		show_message_box(mysql_error(con));
+		mysql_close(con);
+		return;
 	}
+
 	g_free(query);
-	sql_close(connection);
+	mysql_close(con);
 	load_subject();
-}*/
+}
 
 static void show_message_box(const char *message)
 {

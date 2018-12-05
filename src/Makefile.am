@@ -1,7 +1,13 @@
-bin_PROGRAMS = pointbook
+bin_PROGRAMS = pointbook book
 pointbook_SOURCES = main.c sql.h sql.c
 pointbook_CPPFLAGS = @PKGGTK_CFLAGS@ @SQLITE3_CFLAGS@ $(AM_CPPFLAGS) \
 -DDATA_PATH=\"$(pkgdatadir)\"
 pointbook_CFLAGS = $(AM_CFLAGS)
 pointbook_LDFLAGS = $(PKGGTK_LDFLAGS) $(SQLITE3_LDFLAGS) $(AM_LDFLAGS)	
 pointbook_LDADD = $(PKGGTK_LIBS) $(SQLITE3_LIBS)
+
+book_SOURCES = main_mysql.c
+book_CPPFLAGS = @PKGGTK_CFLAGS@ @MYSQLCLIENT_CFLAGS@ $(AM_CPPFLAGS)
+book_CFLAGS = $(AM_CFLAGS)
+book_LDFLAGS = $(PKGGTK_LDFLAGS) $(MYSQLCLIENT_LDFLAGS) $(AM_LDFLAGS)	
+book_LDADD = $(PKGGTK_LIBS) $(MYSQLCLIENT_LIBS)

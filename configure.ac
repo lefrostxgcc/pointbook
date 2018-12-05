@@ -14,6 +14,7 @@ AC_PROG_CC
 # Checks for libraries.
 PKG_CHECK_MODULES([PKGGTK], [gtk+-3.0])
 PKG_CHECK_MODULES([SQLITE3], [sqlite3])
+PKG_CHECK_MODULES([MYSQLCLIENT], [mysqlclient])
 
 # Checks for header files.
 

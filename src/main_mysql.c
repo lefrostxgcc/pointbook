@@ -16,10 +16,10 @@ static GtkWidget	*create_pupil_points_page(void);
 static GtkWidget	*create_pupil_points_dummy_page(void);
 static GtkWidget	*create_class_points_page(void);*/
 static void setup_tree_view(GtkWidget *tree_view);
-/*static void on_button_add_clicked(GtkWidget *button, gpointer data);
+static void on_button_add_clicked(GtkWidget *button, gpointer data);
 static void on_button_update_clicked(GtkWidget *button, gpointer data);
-static void on_button_delete_clicked(GtkWidget *button, gpointer data);*/
-static void on_button_pupil_login_clicked(GtkWidget *button, gpointer data);
+static void on_button_delete_clicked(GtkWidget *button, gpointer data);
+/*static void on_button_pupil_login_clicked(GtkWidget *button, gpointer data);
 static void on_button_teacher_login_clicked(GtkWidget *button, gpointer data);
 /*static int show_subject_callback(void *opt_arg, int row_count, char **rows,
 	char **col_name);
@@ -42,9 +42,9 @@ static int point_pupil_fill_callback(void *opt_arg, int col_count,
 static gboolean walk_pupil_points(GtkTreeModel *model, GtkTreePath *path,
 									GtkTreeIter *iter, gpointer data);*/
 static void	load_subject(void);
-/*static void on_treeview_subject_row_activated(GtkTreeView *tree_view,
+static void on_treeview_subject_row_activated(GtkTreeView *tree_view,
 	GtkTreePath *path, GtkTreeViewColumn *column, gpointer user_data);
-static int is_selected_subject_row(void);*/
+static int is_selected_subject_row(void);
 static void fill_pupil_store(void);
 static void fill_teacher_login(void);
 /*static void fill_pupil_points_store(int id);
@@ -188,12 +188,12 @@ static GtkWidget	*create_login_page(void)
 	gtk_grid_attach(GTK_GRID(grid_subject), entry_teacher_password, 1, 4, 1, 1);
 	gtk_grid_attach(GTK_GRID(grid_subject), button_teacher_login, 2, 3, 1, 2);
 
-	g_signal_connect(G_OBJECT(button_pupil_login), "clicked",
+	/*g_signal_connect(G_OBJECT(button_pupil_login), "clicked",
 						G_CALLBACK(on_button_pupil_login_clicked),
 						(gpointer)entry_pupil_password);
 	g_signal_connect(G_OBJECT(button_teacher_login), "clicked",
 						G_CALLBACK(on_button_teacher_login_clicked),
-						(gpointer)entry_teacher_password);
+						(gpointer)entry_teacher_password);*/
 
 	return grid_subject;
 }
@@ -250,13 +250,13 @@ static GtkWidget	*create_subject_page(void)
 
 	gtk_container_add(GTK_CONTAINER(frame_subject), hbox_subject);
 
-	/*g_signal_connect(G_OBJECT(tree_view_subject), "row-activated",
+	g_signal_connect(G_OBJECT(tree_view_subject), "row-activated",
 						G_CALLBACK(on_treeview_subject_row_activated),
 						(gpointer)entry_subject);
 	g_signal_connect(G_OBJECT(button_add), "clicked",
 						G_CALLBACK(on_button_add_clicked),
 						(gpointer)entry_subject);
-	g_signal_connect(G_OBJECT(button_update), "clicked",
+	/*g_signal_connect(G_OBJECT(button_update), "clicked",
 						G_CALLBACK(on_button_update_clicked),
 						(gpointer)entry_subject);
 	g_signal_connect(G_OBJECT(button_delete), "clicked",
@@ -359,7 +359,7 @@ static void setup_tree_view(GtkWidget *tree_view)
 	selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(tree_view));
 	gtk_tree_selection_set_mode(selection, GTK_SELECTION_BROWSE);
 }
-/*
+
 static void on_treeview_subject_row_activated(GtkTreeView *tree_view,
 	GtkTreePath *path, GtkTreeViewColumn *column, gpointer user_data)
 {
@@ -383,7 +383,7 @@ static int is_selected_subject_row(void)
 	selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(tree_view_subject));
 	return gtk_tree_selection_get_selected(selection, NULL, NULL);
 }
-*/
+
 static void on_button_pupil_login_clicked(GtkWidget *button, gpointer data)
 {
 	GtkTreeIter		iter;
@@ -409,40 +409,69 @@ static void on_button_teacher_login_clicked(GtkWidget *button, gpointer data)
 	else
 		show_message_box("Неверный логин или пароль пользователя");*/
 }
-/*
+
 static void on_button_add_clicked(GtkWidget *button, gpointer data)
 {
-	void		*connection;
-	char		*query;
+	MYSQL			*con;
+	MYSQL_RES		*result;
+	char			*query;
+	MYSQL_ROW		row;
+	GtkTreeIter		iter;
+	int				num_fields;
 
 	if (gtk_entry_get_text_length(GTK_ENTRY(data)) == 0)
 		return;
 
-	if (sql_open(DATABASE_FILENAME, &connection) != SQL_OK)
+	con = mysql_init(NULL);
+
+	if (con == NULL)
 	{
-		show_message_box(sql_error_msg(connection));
-		sql_close(connection);
+		show_message_box("mysql_init failed()");
 		return;
 	}
-	query = "SELECT MAX(id) FROM subject;";
-	if (sql_exec(connection, query, select_max_subject_id_callback, NULL)
-		!= SQL_OK)
+
+	if (!mysql_real_connect(con, DB_ADDR, DB_USER, DB_PASS, DB_NAME, 0, NULL, 0))
 	{
-		show_message_box(sql_error_msg(connection));
+		show_message_box(mysql_error(con));
+		mysql_close(con);
+		return;
 	}
+
+	if (mysql_query(con, "SELECT MAX(id) FROM subject;"))
+	{
+		show_message_box(mysql_error(con));
+		mysql_close(con);
+		return;
+	}
+
+	result = mysql_store_result(con);
+	if (result == NULL)
+	{
+		show_message_box(mysql_error(con));
+		mysql_close(con);
+		return;
+	}
+
+	row = mysql_fetch_row(result);
+	max_subject_id = g_ascii_strtoll(row[0], NULL, 10);
+	mysql_free_result(result);
+
 	query = g_strdup_printf(
 		"INSERT INTO subject (id, subject) VALUES ('%d', '%s');",
 		max_subject_id + 1, gtk_entry_get_text(GTK_ENTRY(data)));
-	if (sql_exec(connection, query, NULL, NULL)
-		!= SQL_OK)
+
+	if (mysql_query(con, query))
 	{
-		show_message_box(sql_error_msg(connection));
+		show_message_box(mysql_error(con));
+		mysql_close(con);
+		return;
 	}
+
 	g_free(query);
-	sql_close(connection);
+	mysql_close(con);
 	load_subject();
 }
-
+/*
 static void on_button_update_clicked(GtkWidget *button, gpointer data)
 {
 	void		*connection;

@@ -11,15 +11,15 @@ enum {WINDOW_WIDTH = 600, WINDOW_HEIGHT = 400};
 
 static GtkWidget	*create_login_page(void);
 static GtkWidget	*create_subject_page(void);
-/*static GtkWidget	*create_pupil_page(void);
+static GtkWidget	*create_pupil_page(void);
 static GtkWidget	*create_pupil_points_page(void);
 static GtkWidget	*create_pupil_points_dummy_page(void);
-static GtkWidget	*create_class_points_page(void);*/
+static GtkWidget	*create_class_points_page(void);
 static void setup_tree_view(GtkWidget *tree_view);
 static void on_button_add_clicked(GtkWidget *button, gpointer data);
 static void on_button_update_clicked(GtkWidget *button, gpointer data);
 static void on_button_delete_clicked(GtkWidget *button, gpointer data);
-/*static void on_button_pupil_login_clicked(GtkWidget *button, gpointer data);*/
+static void on_button_pupil_login_clicked(GtkWidget *button, gpointer data);
 static void on_button_teacher_login_clicked(GtkWidget *button, gpointer data);
 /*static int show_subject_callback(void *opt_arg, int row_count, char **rows,
 	char **col_name);
@@ -47,10 +47,10 @@ static void on_treeview_subject_row_activated(GtkTreeView *tree_view,
 static int is_selected_subject_row(void);
 static void fill_pupil_store(void);
 static void fill_teacher_login(void);
-/*static void fill_pupil_points_store(int id);
-static void login_pupil(int id);*/
+/*static void fill_pupil_points_store(int id);*/
+static void login_pupil(int id);
 static void login_teacher(void);
-//static gboolean check_pupil_login(int id, const gchar *password);
+static gboolean check_pupil_login(int id, const gchar *password);
 static gboolean check_teacher_login(int id, const gchar *password);
 static void show_message_box(const char *message);
 //static int get_pupil_points_max_day(int id);
@@ -102,7 +102,7 @@ int main(int argc, char *argv[])
 	gtk_notebook_append_page(GTK_NOTEBOOK(notebook), create_login_page(),
 		label_login);
 	gtk_notebook_append_page(GTK_NOTEBOOK(notebook), create_subject_page(),
-		label_subject);/*
+		label_subject);
 	gtk_notebook_append_page(GTK_NOTEBOOK(notebook), create_pupil_page(),
 		label_pupil);
 	gtk_notebook_append_page(GTK_NOTEBOOK(notebook),
@@ -110,7 +110,7 @@ int main(int argc, char *argv[])
 								label_pupil_points);
 	gtk_notebook_append_page(GTK_NOTEBOOK(notebook),
 								create_class_points_page(),
-								label_class_points);*/
+								label_class_points);
 
 	gtk_container_add(GTK_CONTAINER(window), notebook);
 
@@ -188,9 +188,9 @@ static GtkWidget	*create_login_page(void)
 	gtk_grid_attach(GTK_GRID(grid_subject), entry_teacher_password, 1, 4, 1, 1);
 	gtk_grid_attach(GTK_GRID(grid_subject), button_teacher_login, 2, 3, 1, 2);
 
-	/*g_signal_connect(G_OBJECT(button_pupil_login), "clicked",
+	g_signal_connect(G_OBJECT(button_pupil_login), "clicked",
 						G_CALLBACK(on_button_pupil_login_clicked),
-						(gpointer)entry_pupil_password);*/
+						(gpointer)entry_pupil_password);
 	g_signal_connect(G_OBJECT(button_teacher_login), "clicked",
 						G_CALLBACK(on_button_teacher_login_clicked),
 						(gpointer)entry_teacher_password);
@@ -266,7 +266,7 @@ static GtkWidget	*create_subject_page(void)
 	return frame_subject;
 }
 
-/*static GtkWidget	*create_pupil_page(void)
+static GtkWidget	*create_pupil_page(void)
 {
 	return gtk_label_new(NULL);
 }
@@ -275,7 +275,7 @@ static GtkWidget	*create_pupil_points_dummy_page(void)
 {
 	return gtk_label_new(NULL);
 }
-
+/*
 static GtkWidget	*create_pupil_points_page(void)
 {
 	GtkWidget			*frame_pupil_points;
@@ -329,12 +329,12 @@ static GtkWidget	*create_pupil_points_page(void)
 
 	return vbox;
 }
-
+*/
 static GtkWidget	*create_class_points_page(void)
 {
 	return gtk_label_new(NULL);
 }
-*/
+
 static void setup_tree_view(GtkWidget *tree_view)
 {
 	GtkTreeViewColumn	*column;
@@ -396,10 +396,10 @@ static void on_button_pupil_login_clicked(GtkWidget *button, gpointer data)
 	gtk_tree_model_get(GTK_TREE_MODEL(store_pupil), &iter, 0, &id_str,
 		1, &curr_pupil_name, -1);
 	id = (int) g_ascii_strtoll(id_str, NULL, 10);
-/*	if (check_pupil_login(id, gtk_entry_get_text(GTK_ENTRY(data))))
+	if (check_pupil_login(id, gtk_entry_get_text(GTK_ENTRY(data))))
 		login_pupil(id);
 	else
-		show_message_box("Неверный логин или пароль пользователя");*/
+		show_message_box("Неверный логин или пароль пользователя");
 }
 
 static void on_button_teacher_login_clicked(GtkWidget *button, gpointer data)
@@ -789,32 +789,62 @@ static int get_pupil_points_max_day(int id)
 	sql_close(connection);
 	return pupil_points_max_day;
 }
-
+*/
 static gboolean check_pupil_login(int id, const gchar *password)
 {
-	void		*connection;
-	char		*query;
+	MYSQL			*con;
+	MYSQL_RES		*result;
+	char			*query;
+	MYSQL_ROW		row;
 
-	if (sql_open(DATABASE_FILENAME, &connection) != SQL_OK)
+	con = mysql_init(NULL);
+
+	if (con == NULL)
 	{
-		show_message_box(sql_error_msg(connection));
-		sql_close(connection);
+		show_message_box("mysql_init failed()");
 		return FALSE;
 	}
-	is_pupil_password_match = FALSE;
+
+	if (!mysql_real_connect(con, DB_ADDR, DB_USER, DB_PASS, DB_NAME, 0, NULL, 0))
+	{
+		show_message_box(mysql_error(con));
+		mysql_close(con);
+		return FALSE;
+	}
+
 	query = g_strdup_printf(
 		"SELECT COUNT(*) FROM pupil WHERE id = '%d' AND password = '%s';",
 		id, password);
-	if (sql_exec(connection, query, check_pupil_password_callback, NULL)
-		!= SQL_OK)
+	if (mysql_query(con, query))
 	{
-		show_message_box(sql_error_msg(connection));
+		show_message_box(mysql_error(con));
+		mysql_close(con);
+		return FALSE;
 	}
-	g_free(query);
-	sql_close(connection);
+
+	result = mysql_store_result(con);
+	if (result == NULL)
+	{
+		show_message_box(mysql_error(con));
+		mysql_close(con);
+		return FALSE;
+	}
+
+	row = mysql_fetch_row(result);
+	if (row == NULL)
+	{
+		show_message_box(mysql_error(con));
+		mysql_free_result(result);
+		mysql_close(con);
+		return FALSE;
+	}
+
+	is_pupil_password_match = g_ascii_strtoll(row[0], NULL, 10) != 0;
+	mysql_free_result(result);
+	mysql_close(con);
 	return is_pupil_password_match;
 }
-*/
+
 static gboolean check_teacher_login(int id, const gchar *password)
 {
 	MYSQL			*con;
@@ -869,23 +899,23 @@ static gboolean check_teacher_login(int id, const gchar *password)
 	mysql_close(con);
 	return is_teacher_password_match;
 }
-/*
+
 static void login_pupil(int id)
 {
 	GtkWidget	*label_pupil_points;
 
-	fill_pupil_points_store(id);
+	//fill_pupil_points_store(id);
 	gtk_widget_hide(hbox_subject);
-	label_pupil_points = gtk_label_new("Оценки ученика");
+	/*label_pupil_points = gtk_label_new("Оценки ученика");
 	gtk_notebook_remove_page(GTK_NOTEBOOK(notebook), 3);
 	gtk_notebook_insert_page(GTK_NOTEBOOK(notebook),
                           create_pupil_points_page(),
                           label_pupil_points,
                           3);
-	gtk_widget_show_all(notebook);
+	gtk_widget_show_all(notebook);*/
 	gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook), 3);
 }
-*/
+
 static void login_teacher(void)
 {
 	gtk_widget_show_all(hbox_subject);

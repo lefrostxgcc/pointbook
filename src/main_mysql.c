@@ -565,26 +565,48 @@ static void fill_pupil_store(void)
 
 static void fill_teacher_login(void)
 {
-	/*void		*connection;
-	const char	*query;
+	MYSQL			*con;
+	MYSQL_RES		*result;
+	MYSQL_ROW		row;
+	int				num_fields;
 
-	if (sql_open(DATABASE_FILENAME, &connection) != SQL_OK)
+	con = mysql_init(NULL);
+
+	if (con == NULL)
 	{
-		show_message_box(sql_error_msg(connection));
-		sql_close(connection);
+		show_message_box("mysql_init failed()");
 		return;
 	}
 
-	g_free(teacher_login);
-	query = "SELECT teacher FROM teacher WHERE id = 1 LIMIT 1;";
-	if (sql_exec(connection, query, fill_teacher_login_callback, 0)
-		!= SQL_OK)
+	if (!mysql_real_connect(con, DB_ADDR, DB_USER, DB_PASS, DB_NAME, 0, NULL, 0))
 	{
-		show_message_box(sql_error_msg(connection));
+		show_message_box(mysql_error(con));
+		mysql_close(con);
 		return;
 	}
 
-	sql_close(connection);*/
+	if (mysql_query(con, "SELECT teacher FROM teacher WHERE id=1 LIMIT 1;"))
+	{
+		show_message_box(mysql_error(con));
+		mysql_close(con);
+	}
+
+	result = mysql_store_result(con);
+	if (result == NULL)
+	{
+		show_message_box(mysql_error(con));
+		mysql_close(con);
+	}
+
+	row = mysql_fetch_row(result);
+	if (row == NULL)
+	{
+		show_message_box(mysql_error(con));
+		mysql_close(con);
+	}
+	
+	teacher_login = g_strdup(row[0]);
+	mysql_close(con);
 }
 /*
 static void fill_pupil_points_store(int id)

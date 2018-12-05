@@ -83,7 +83,7 @@ int main(int argc, char *argv[])
 	store_pupil = gtk_list_store_new(2, G_TYPE_STRING, G_TYPE_STRING);
 	//store_subject = gtk_list_store_new(2, G_TYPE_STRING, G_TYPE_STRING);
 
-	//fill_pupil_store();
+	fill_pupil_store();
 	fill_teacher_login();
 	//load_subject();
 
@@ -541,26 +541,48 @@ static void	load_subject(void)
 */
 static void fill_pupil_store(void)
 {
-	/*void		*connection;
-	const char	*query;
+	MYSQL			*con;
+	MYSQL_RES		*result;
+	MYSQL_ROW		row;
+	GtkTreeIter		iter;
+	int				num_fields;
 
-	if (sql_open(DATABASE_FILENAME, &connection) != SQL_OK)
+	con = mysql_init(NULL);
+
+	if (con == NULL)
 	{
-		show_message_box(sql_error_msg(connection));
-		sql_close(connection);
+		show_message_box("mysql_init failed()");
 		return;
 	}
 
-	gtk_list_store_clear(store_pupil);
-
-	query = "SELECT id, pupil FROM pupil ORDER BY pupil;";
-	if (sql_exec(connection, query, fill_pupil_callback, 0) != SQL_OK)
+	if (!mysql_real_connect(con, DB_ADDR, DB_USER, DB_PASS, DB_NAME, 0, NULL, 0))
 	{
-		show_message_box(sql_error_msg(connection));
+		show_message_box(mysql_error(con));
+		mysql_close(con);
 		return;
 	}
 
-	sql_close(connection);*/
+	if (mysql_query(con, "SELECT id, pupil FROM pupil ORDER BY pupil;"))
+	{
+		show_message_box(mysql_error(con));
+		mysql_close(con);
+	}
+
+	result = mysql_store_result(con);
+	if (result == NULL)
+	{
+		show_message_box(mysql_error(con));
+		mysql_close(con);
+	}
+
+	while (row = mysql_fetch_row(result))
+	{
+		gtk_list_store_append(store_pupil, &iter);
+		gtk_list_store_set(store_pupil, &iter, 0, row[0], 1, row[1], -1);
+	}
+	
+	mysql_free_result(result);
+	mysql_close(con);
 }
 
 static void fill_teacher_login(void)
@@ -568,7 +590,6 @@ static void fill_teacher_login(void)
 	MYSQL			*con;
 	MYSQL_RES		*result;
 	MYSQL_ROW		row;
-	int				num_fields;
 
 	con = mysql_init(NULL);
 
@@ -606,6 +627,7 @@ static void fill_teacher_login(void)
 	}
 	
 	teacher_login = g_strdup(row[0]);
+	mysql_free_result(result);
 	mysql_close(con);
 }
 /*
